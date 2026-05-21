@@ -1,0 +1,43 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/.venv/
+venv/
+.venv/
+
+# Builds
+build/
+dist/
+.next/
+frontend/build/
+frontend/dist/
+
+# Caches / generated files
+.cache/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.pyo
+v/cache/
+.cache/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archives / exports
+project.zip
+*.zip
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

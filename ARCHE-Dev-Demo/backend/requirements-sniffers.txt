@@ -1,0 +1,5 @@
+# Minimal dependencies for testing the staged ARCHE sniffer subsystem locally.
+# This avoids Emergent-only backend dependencies while we refactor the engine.
+pytest>=8.0.0
+rapidfuzz>=3.9.0
+scikit-learn>=1.5.0
