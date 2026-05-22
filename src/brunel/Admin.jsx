@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { useAuth } from "./AuthContext.jsx";
 import "./App.css";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://brunel-5lxo.onrender.com";
+const API = `${BACKEND_URL}/api`;
 
 const STATES = ["baseline", "curious", "warm", "guarded", "offended", "reflective", "repair", "elevated", "fatigued"];
 const MODES = ["normal", "sentinel", "social", "repair", "reflective", "workstation", "low-power"];
@@ -53,10 +58,134 @@ function SelectField({ label, value, options, onChange }) {
   );
 }
 
+function PacketBrokerModal({ authHeader }) {
+  const [open, setOpen] = useState(true);
+  const [volume, setVolume] = useState(0);
+  const [savedVolume, setSavedVolume] = useState(0);
+  const [status, setStatus] = useState("loading broker knob...");
+  const [lastSummary, setLastSummary] = useState(null);
+  const [position, setPosition] = useState({ x: 36, y: 118 });
+  const dragRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await axios.get(`${API}/admin/packet-broker`, { headers: authHeader });
+        if (cancelled) return;
+        const nextVolume = Number(r.data?.volume || 0);
+        setVolume(nextVolume);
+        setSavedVolume(nextVolume);
+        setLastSummary(r.data?.last_summary || null);
+        setStatus("broker linked");
+      } catch (e) {
+        setStatus(`broker unavailable: ${e?.response?.data?.detail || e.message}`);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [authHeader]);
+
+  const startDrag = (event) => {
+    const pointer = event.touches?.[0] || event;
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: pointer.clientX,
+      startY: pointer.clientY,
+      baseX: position.x,
+      baseY: position.y,
+    };
+    if (event.currentTarget.setPointerCapture && event.pointerId !== undefined) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+  };
+
+  const moveDrag = (event) => {
+    if (!dragRef.current) return;
+    const pointer = event.touches?.[0] || event;
+    const dx = pointer.clientX - dragRef.current.startX;
+    const dy = pointer.clientY - dragRef.current.startY;
+    setPosition({
+      x: Math.max(8, dragRef.current.baseX + dx),
+      y: Math.max(8, dragRef.current.baseY + dy),
+    });
+  };
+
+  const stopDrag = () => {
+    dragRef.current = null;
+  };
+
+  const saveVolume = async () => {
+    try {
+      setStatus("saving broker volume...");
+      const r = await axios.put(`${API}/admin/packet-broker`, { volume }, { headers: authHeader });
+      const nextVolume = Number(r.data?.volume || volume);
+      setSavedVolume(nextVolume);
+      setVolume(nextVolume);
+      setStatus(`saved at ${nextVolume}`);
+    } catch (e) {
+      setStatus(`save failed: ${e?.response?.data?.detail || e.message}`);
+    }
+  };
+
+  const modeLabel = useMemo(() => {
+    if (volume === 0) return "offline";
+    if (volume <= 25) return "observe only";
+    if (volume <= 60) return "light trim";
+    if (volume <= 85) return "active trim";
+    return "hot / full pressure";
+  }, [volume]);
+
+  if (!open) {
+    return <button className="floating-broker-tab" onClick={() => setOpen(true)}>Packet Broker</button>;
+  }
+
+  return (
+    <div className="broker-modal" style={{ left: position.x, top: position.y }}>
+      <div
+        className="broker-modal-header"
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={stopDrag}
+        onPointerCancel={stopDrag}
+      >
+        <span>Packet Broker</span>
+        <button onClick={() => setOpen(false)} aria-label="close packet broker modal">×</button>
+      </div>
+
+      <div className="broker-modal-body">
+        <div className="broker-readout">
+          <strong>{volume}</strong>
+          <span>{modeLabel}</span>
+        </div>
+        <input className="broker-volume" type="range" min="0" max="100" value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
+        <div className="broker-scale">
+          <span>0 silent</span>
+          <span>50 trim</span>
+          <span>100 hot</span>
+        </div>
+        <button className="auth-submit compact" onClick={saveVolume} disabled={volume === savedVolume}>Save Broker Volume</button>
+        <div className="broker-status">{status}</div>
+        {lastSummary?.packet_count !== undefined && (
+          <div className="broker-last">
+            <span>last packets: {lastSummary.packet_count}</span>
+            <span>influence: {lastSummary.influence_enabled ? "yes" : "no"}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Admin() {
   const navigate = useNavigate();
+  const { session } = useAuth();
   const [profile, setProfile] = useState(DEFAULT_PROFILE);
   const [savedAt, setSavedAt] = useState(null);
+
+  const authHeader = useMemo(
+    () => (session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+    [session?.access_token]
+  );
 
   useEffect(() => {
     const raw = window.localStorage.getItem("arche.tuningBench.v1");
@@ -86,6 +215,8 @@ export default function Admin() {
 
   return (
     <div className="admin-shell">
+      <PacketBrokerModal authHeader={authHeader} />
+
       <div className="admin-topbar">
         <div className="auth-brand">
           <div className="auth-brand-name">ARCHE</div>
