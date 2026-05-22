@@ -166,10 +166,10 @@ function LandingPage() {
         <section className="basement-panel" id="basement">
           <div>
             <p className="basement-kicker">Founders Basement / Goblins Only</p>
-            <h2>A polished surface. A strange machine underneath.</h2>
+            <h2>Maintenance access below the polished machine.</h2>
             <p>
-              ArchePersona is serious infrastructure with the hatch left slightly open. There is a real builder
-              under this machine, and the machine remembers pressure.
+              This is where the runtime gets tuned, broken, argued with, rebuilt, and occasionally bribed with coffee.
+              Watch your step. The floor remembers pressure.
             </p>
           </div>
 
