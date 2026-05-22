@@ -20,11 +20,12 @@ const personas = [
 ];
 
 const terminalLines = [
-  '/boot/RKe/status?/run',
+  'PUNIX BASEMENT VERSION 0.6.6.6',
   'INITIALIZATION INCOMPLETE',
-  'RUNTIME UNSTABLE',
-  'CURRENT API CREDITS: -$4.38',
-  'PLEASE INSERT BITCOIN TO CONTINUE',
+  'RUNTIME? N',
+  'JOGTIME? Y',
+  'CORPORATE MODE? N',
+  'GOBLIN MODE? Y',
   'OPEN BASEMENT ACCESS?'
 ];
 
@@ -44,7 +45,7 @@ function BootTerminal() {
       const timeout = window.setTimeout(() => {
         setActiveLine(currentLine.slice(0, charIndex + 1));
         setCharIndex(charIndex + 1);
-      }, lineIndex === 1 ? 36 : 28);
+      }, 30);
       return () => window.clearTimeout(timeout);
     }
 
@@ -60,7 +61,7 @@ function BootTerminal() {
       setActiveLine('');
       setLineIndex(lineIndex + 1);
       setCharIndex(0);
-    }, lineIndex === 0 ? 360 : 520);
+    }, lineIndex === 0 ? 420 : 500);
 
     return () => window.clearTimeout(timeout);
   }, [charIndex, done, lineIndex]);
@@ -164,25 +165,17 @@ function LandingPage() {
         </section>
 
         <section className="basement-panel" id="basement">
-          <div>
-            <p className="basement-kicker">Founders Basement / Goblins Only</p>
-            <h2>Maintenance access below the polished machine.</h2>
-            <p>
-              This is where the runtime gets tuned, broken, argued with, rebuilt, and occasionally bribed with coffee.
-              Watch your step. The floor remembers pressure.
-            </p>
-          </div>
-
+          <p className="basement-kicker">Founders Basement / Goblins Only</p>
           <BootTerminal />
         </section>
 
         <section className="troll-panel" id="troll">
           <div className="terminal-card troll-card">
-            <span>ACCESS DENIED?</span>
-            <strong>WRONG LEVER, GENIUS.</strong>
-            <span>YOU ARE NOW IN THE TROLL HOLE.</span>
-            <span>PLEASE RETURN TO BASEMENT ACCESS.</span>
-            <a className="choice-link" href="#basement">YEAH FINE</a>
+            <span>NO?</span>
+            <strong>OKAY. TROLL HOLE.</strong>
+            <span>THIS IS WHAT HAPPENS WHEN YOU PICK THE FUNNY WRONG ANSWER.</span>
+            <span>RETURN TO BASEMENT ACCESS?</span>
+            <a className="choice-link" href="#basement">Y</a>
           </div>
         </section>
       </section>
