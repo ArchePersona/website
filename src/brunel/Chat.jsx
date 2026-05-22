@@ -5,7 +5,12 @@ import { Send, LogOut, Shield, Copy, ClipboardCopy } from "lucide-react";
 import { useAuth } from "./AuthContext.jsx";
 import "./App.css";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://arche-core.onrender.com";
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
+if (!BACKEND_URL) {
+  throw new Error("VITE_BACKEND_URL is not configured.");
+}
+
 const API = `${BACKEND_URL}/api`;
 
 function Chat() {
