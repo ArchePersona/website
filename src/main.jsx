@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
@@ -18,6 +18,70 @@ const personas = [
   ['RKe SIRENE', 'symbolic exploration environment'],
   ['RKe CHIMERA', 'advanced synthesis runtime'],
 ];
+
+const terminalLines = [
+  '/boot/RKe/status?/run',
+  'INITIALIZATION INCOMPLETE',
+  'RUNTIME UNSTABLE',
+  'CURRENT API CREDITS: -$4.38',
+  'PLEASE INSERT BITCOIN TO CONTINUE',
+  'OPEN BASEMENT ACCESS?'
+];
+
+function BootTerminal() {
+  const [visibleLines, setVisibleLines] = useState([]);
+  const [activeLine, setActiveLine] = useState('');
+  const [lineIndex, setLineIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (done) return undefined;
+
+    const currentLine = terminalLines[lineIndex];
+
+    if (charIndex < currentLine.length) {
+      const timeout = window.setTimeout(() => {
+        setActiveLine(currentLine.slice(0, charIndex + 1));
+        setCharIndex(charIndex + 1);
+      }, lineIndex === 1 ? 36 : 28);
+      return () => window.clearTimeout(timeout);
+    }
+
+    const timeout = window.setTimeout(() => {
+      if (lineIndex === terminalLines.length - 1) {
+        setVisibleLines((lines) => [...lines, currentLine]);
+        setActiveLine('');
+        setDone(true);
+        return;
+      }
+
+      setVisibleLines((lines) => [...lines, currentLine]);
+      setActiveLine('');
+      setLineIndex(lineIndex + 1);
+      setCharIndex(0);
+    }, lineIndex === 0 ? 360 : 520);
+
+    return () => window.clearTimeout(timeout);
+  }, [charIndex, done, lineIndex]);
+
+  return (
+    <div className="terminal-card" aria-label="Machine room terminal status">
+      {visibleLines.map((line, index) => (
+        <span key={`${line}-${index}`} className={index === 1 ? 'terminal-warning' : ''}>{line}</span>
+      ))}
+      {!done && <span className={lineIndex === 1 ? 'terminal-warning' : ''}>{activeLine}<span className="terminal-cursor">_</span></span>}
+      {done && (
+        <span className="terminal-choice">
+          <a className="choice-link blink-choice" href="#basement">Y</a>
+          <span>/</span>
+          <a className="choice-link blink-choice" href="#troll">N</a>
+          <span className="terminal-cursor">_</span>
+        </span>
+      )}
+    </div>
+  );
+}
 
 function LandingPage() {
   return (
@@ -99,7 +163,7 @@ function LandingPage() {
           </div>
         </section>
 
-        <section className="basement-panel">
+        <section className="basement-panel" id="basement">
           <div>
             <p className="basement-kicker">Founders Basement / Goblins Only</p>
             <h2>A polished surface. A strange machine underneath.</h2>
@@ -109,12 +173,16 @@ function LandingPage() {
             </p>
           </div>
 
-          <div className="terminal-card" aria-label="Machine room terminal status">
-            <span>/boot/RKe/status?/run</span>
-            <strong>INITIALIZATION INCOMPLETE</strong>
-            <span>RUNTIME UNSTABLE</span>
-            <span>CURRENT API CREDITS: -$4.38</span>
-            <span>PLEASE INSERT BITCOIN TO CONTINUE</span>
+          <BootTerminal />
+        </section>
+
+        <section className="troll-panel" id="troll">
+          <div className="terminal-card troll-card">
+            <span>ACCESS DENIED?</span>
+            <strong>WRONG LEVER, GENIUS.</strong>
+            <span>YOU ARE NOW IN THE TROLL HOLE.</span>
+            <span>PLEASE RETURN TO BASEMENT ACCESS.</span>
+            <a className="choice-link" href="#basement">YEAH FINE</a>
           </div>
         </section>
       </section>
