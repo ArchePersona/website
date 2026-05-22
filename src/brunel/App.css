@@ -44,10 +44,11 @@ button, input, textarea, select { font: inherit; }
 .speech-status { min-height: 14px; margin: 0 0 6px; font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
 .input-row { display: flex; gap: 6px; align-items: stretch; }
 textarea.input { flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--line); color: var(--white); font-size: 12px; padding: 9px 12px; resize: none; height: 56px; outline: none; }
-button.send, button.mic-btn { width: 44px; background: transparent; border: 1px solid var(--line); color: var(--green); cursor: pointer; display: flex; align-items: center; justify-content: center; }
-button.send:hover:not(:disabled), button.mic-btn:hover:not(:disabled) { border-color: var(--green); color: var(--green-bright); background: rgba(34,197,94,.08); }
+.hidden-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden; }
+button.send, button.mic-btn, button.file-btn { width: 44px; background: transparent; border: 1px solid var(--line); color: var(--green); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+button.send:hover:not(:disabled), button.mic-btn:hover:not(:disabled), button.file-btn:hover:not(:disabled) { border-color: var(--green); color: var(--green-bright); background: rgba(34,197,94,.08); }
 button.mic-btn.listening { border-color: var(--green-bright); color: var(--green-bright); background: rgba(34,197,94,.14); box-shadow: 0 0 18px rgba(74,222,128,.22); }
-button.send:disabled, button.mic-btn:disabled { opacity: .3; cursor: not-allowed; }
+button.send:disabled, button.mic-btn:disabled, button.file-btn:disabled { opacity: .3; cursor: not-allowed; }
 .footnote { display: flex; justify-content: space-between; align-items: center; font-size: 9px; letter-spacing: .16em; color: var(--dim); text-transform: uppercase; }
 .footnote-tag { font-family: var(--display-serif); font-style: italic; color: var(--gold); text-transform: none; letter-spacing: .02em; font-size: 13px; }
 .auth-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 22px; background: var(--bg); color: var(--white); font-family: var(--terminal-mono); }
