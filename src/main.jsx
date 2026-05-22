@@ -11,70 +11,112 @@ import Disclaimer from './brunel/Disclaimer.jsx';
 import Admin from './brunel/Admin.jsx';
 import ProtectedRoute from './brunel/ProtectedRoute.jsx';
 
+const personas = [
+  ['RKe PUPPY', 'approachable companion runtime'],
+  ['RKe BUDDY', 'casual social interaction layer'],
+  ['RKe BRUNEL', 'continuity-focused relational intelligence'],
+  ['RKe SIRENE', 'symbolic exploration environment'],
+  ['RKe CHIMERA', 'advanced synthesis runtime'],
+];
+
 function LandingPage() {
   return (
-    <main className="site-shell">
-      <section className="hero-section" id="top">
-        <div className="nav-bar">
-          <a className="brand-mark" href="#top">ArchePersona</a>
-          <a href="/brunel/disclaimer" className="status-pill">Launch Brunel</a>
-        </div>
+    <main className="arche-page">
+      <section className="page-shell" id="top">
+        <header className="site-header" aria-label="ArchePersona company header">
+          <a className="company-wordmark" href="#top">ArchePersona</a>
+          <a href="/brunel/disclaimer" className="launch-link">Launch Brunel</a>
+        </header>
 
-        <div className="hero-grid">
-          <div className="hero-copy">
-            <p className="eyebrow">Behavioral Operating System</p>
-            <div className="arche-wordmark">ARCHE</div>
-            <p className="subline">Artificial Social Intelligence.</p>
+        <section className="hero" aria-label="ARCHE hero">
+          <div className="present-line">Proudly Presents</div>
+          <h1 className="arche-title">ARCHE</h1>
+          <div className="acronym-line">Adaptive Relational Cognitive Human Emulator</div>
 
-            <h1>AI is horsepower. ARCHE is traction control.</h1>
-
-            <p className="lede">
-              Behavioral governance infrastructure for persistent, human-compatible AI systems.
-            </p>
-
-            <p className="signature">
-              Built to last. Built to matter. Unforgettably. Yours.
-            </p>
-
-            <div className="hero-actions">
-              <a href="/brunel/disclaimer" className="primary-button">
-                Launch Brunel
-              </a>
-            </div>
+          <div className="slogan-stack">
+            <div className="slogan-primary">Artificial <span className="social">Social</span> Intelligence.</div>
+            <div className="slogan-secondary">AI is horsepower. ARCHE is traction control.</div>
+            <div className="slogan-tertiary">Built to last. Built to matter.</div>
+            <div className="signature">Unforgettably. Yours.</div>
           </div>
 
-          <div className="machine-card" aria-label="ARCHE positioning panel">
-            <div className="machine-topline">
-              <span>ARCHE / runtime</span>
-              <span className="live-dot">online</span>
-            </div>
+          <a href="/brunel/disclaimer" className="primary-button">Launch Brunel</a>
+        </section>
 
-            <div className="signal-stack">
-              <div><strong>AI</strong><span>horsepower</span></div>
-              <div><strong>ARCHE</strong><span>traction control</span></div>
-              <div><strong>BRUNEL</strong><span>live proof</span></div>
-            </div>
+        <section className="bridge-section" aria-label="RKe persona infrastructure">
+          <div className="bridge-wrap">
+            <svg viewBox="0 0 1200 900" className="bridge-svg" role="img" aria-label="ARCHE bridge system">
+              <defs>
+                <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="1.8" result="blur" />
+                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                </filter>
+                <linearGradient id="pillarFade" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(218,181,123,0.44)" />
+                  <stop offset="66%" stopColor="rgba(218,181,123,0.23)" />
+                  <stop offset="100%" stopColor="rgba(72,174,112,0.01)" />
+                </linearGradient>
+              </defs>
+
+              <g filter="url(#lineGlow)">
+                <path className="bridge-line" d="M120 96 H1080" />
+                <path className="bridge-soft" d="M145 138 H1055" />
+                <path className="bridge-line" d="M170 330 Q600 64 1030 330" />
+                <path className="bridge-soft" d="M218 312 Q600 104 982 312" />
+                <path className="bridge-soft" d="M276 288 Q600 144 924 288" />
+
+                <g>
+                  <path className="pillar-rail" d="M188 176 V850" stroke="url(#pillarFade)" />
+                  <path className="pillar-rail" d="M246 176 V850" stroke="url(#pillarFade)" />
+                  {Array.from({ length: 8 }).map((_, i) => {
+                    const y = 244 + i * 70;
+                    return <g key={`left-pillar-${i}`}><line className="pillar-faint" x1="188" y1={y} x2="246" y2={y + 32} /><line className="pillar-faint" x1="246" y1={y + 32} x2="188" y2={y + 64} /></g>;
+                  })}
+                </g>
+                <g>
+                  <path className="pillar-rail" d="M954 176 V850" stroke="url(#pillarFade)" />
+                  <path className="pillar-rail" d="M1012 176 V850" stroke="url(#pillarFade)" />
+                  {Array.from({ length: 8 }).map((_, i) => {
+                    const y = 244 + i * 70;
+                    return <g key={`right-pillar-${i}`}><line className="pillar-faint" x1="954" y1={y} x2="1012" y2={y + 32} /><line className="pillar-faint" x1="1012" y1={y + 32} x2="954" y2={y + 64} /></g>;
+                  })}
+                </g>
+              </g>
+            </svg>
+
+            <section className="persona-section">
+              <div className="persona-title">THE RKe PERSONA FAMILY</div>
+              <div className="persona-subtitle">Runtime personalities built on the ARCHE engine</div>
+              <div className="persona-list">
+                {personas.map(([name, desc], index) => (
+                  <div key={name} className={`persona-card depth-${index}`}>
+                    <div className="persona-name">{name}</div>
+                    <div className="persona-desc">// {desc}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="basement-panel">
-        <div>
-          <p className="eyebrow">Founders Basement / Goblins Only</p>
-          <h2>A polished surface. A strange machine underneath.</h2>
-          <p>
-            ArchePersona is serious infrastructure with the hatch left slightly open. There is a real builder
-            under this machine, and the machine remembers pressure.
-          </p>
-        </div>
+        <section className="basement-panel">
+          <div>
+            <p className="basement-kicker">Founders Basement / Goblins Only</p>
+            <h2>A polished surface. A strange machine underneath.</h2>
+            <p>
+              ArchePersona is serious infrastructure with the hatch left slightly open. There is a real builder
+              under this machine, and the machine remembers pressure.
+            </p>
+          </div>
 
-        <div className="terminal-card" aria-label="Machine room terminal status">
-          <span>/boot/RKe/status?/run</span>
-          <strong>INITIALIZATION INCOMPLETE</strong>
-          <span>RUNTIME UNSTABLE</span>
-          <span>CURRENT API CREDITS: -$4.38</span>
-          <span>PLEASE INSERT BITCOIN TO CONTINUE</span>
-        </div>
+          <div className="terminal-card" aria-label="Machine room terminal status">
+            <span>/boot/RKe/status?/run</span>
+            <strong>INITIALIZATION INCOMPLETE</strong>
+            <span>RUNTIME UNSTABLE</span>
+            <span>CURRENT API CREDITS: -$4.38</span>
+            <span>PLEASE INSERT BITCOIN TO CONTINUE</span>
+          </div>
+        </section>
       </section>
     </main>
   );
