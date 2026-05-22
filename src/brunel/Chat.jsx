@@ -21,6 +21,7 @@ function Chat() {
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const recognitionRef = useRef(null);
+  const speechBaseRef = useRef("");
   const scrollRef = useRef(null);
 
   const authHeader = useMemo(
@@ -73,22 +74,16 @@ function Chat() {
       setMessages((m) => [...m, { role: "assistant", content: `[ free speech input failed — ${reason} ]`, ts: new Date().toISOString() }]);
     };
     recognition.onresult = (event) => {
-      let finalText = "";
-      let interimText = "";
+      let transcriptText = "";
 
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const transcript = event.results[i][0]?.transcript || "";
-        if (event.results[i].isFinal) finalText += transcript;
-        else interimText += transcript;
+      for (let i = 0; i < event.results.length; i += 1) {
+        transcriptText += event.results[i][0]?.transcript || "";
       }
 
-      const spoken = (finalText || interimText).trim();
-      if (spoken) {
-        setText((current) => {
-          const base = current.replace(/\s*$/, "");
-          return base ? `${base} ${spoken}` : spoken;
-        });
-      }
+      const spoken = transcriptText.trim();
+      const base = speechBaseRef.current.trim();
+
+      if (spoken) setText(base ? `${base} ${spoken}` : spoken);
     };
 
     recognitionRef.current = recognition;
@@ -111,8 +106,12 @@ function Chat() {
     }
 
     try {
-      if (listening) recognitionRef.current.stop();
-      else recognitionRef.current.start();
+      if (listening) {
+        recognitionRef.current.stop();
+      } else {
+        speechBaseRef.current = text;
+        recognitionRef.current.start();
+      }
     } catch (e) {
       setListening(false);
       setMessages((m) => [...m, { role: "assistant", content: `[ free speech input failed — ${e.message} ]`, ts: new Date().toISOString() }]);
@@ -124,6 +123,7 @@ function Chat() {
     if (!msg || sending) return;
     setSending(true);
     setText("");
+    speechBaseRef.current = "";
     if (listening && recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (_) { /* noop */ }
     }
