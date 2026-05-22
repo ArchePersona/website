@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Send, LogOut, Shield, ClipboardCopy, Mic, MicOff } from "lucide-react";
+import { Send, LogOut, Shield, ClipboardCopy, Mic, MicOff, Paperclip } from "lucide-react";
 import { useAuth } from "./AuthContext.jsx";
 import "./App.css";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://brunel-5lxo.onrender.com";
 const API = `${BACKEND_URL}/api`;
+const MAX_FILE_CHARS = 18000;
 
 function Chat() {
   const { user, session, signOut } = useAuth();
@@ -20,8 +21,10 @@ function Chat() {
   const [copiedKey, setCopiedKey] = useState(null);
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
+  const [fileStatus, setFileStatus] = useState("");
   const recognitionRef = useRef(null);
   const speechBaseRef = useRef("");
+  const fileInputRef = useRef(null);
   const scrollRef = useRef(null);
 
   const authHeader = useMemo(
@@ -118,11 +121,36 @@ function Chat() {
     }
   };
 
+  const openFilePicker = () => {
+    if (sending) return;
+    fileInputRef.current?.click();
+  };
+
+  const attachFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const raw = await file.text();
+      const truncated = raw.length > MAX_FILE_CHARS;
+      const body = truncated ? raw.slice(0, MAX_FILE_CHARS) : raw;
+      const fileBlock = `\n\n[Attached file: ${file.name}${file.type ? ` · ${file.type}` : ""}${truncated ? " · truncated" : ""}]\n\`\`\`\n${body}\n\`\`\``;
+      setText((current) => `${current}${current.trim() ? "\n" : ""}${fileBlock}`.trimStart());
+      setFileStatus(`${file.name}${truncated ? " attached, truncated" : " attached"}`);
+      window.setTimeout(() => setFileStatus(""), 2400);
+    } catch (e) {
+      setFileStatus(`could not read ${file.name}`);
+      setMessages((m) => [...m, { role: "assistant", content: `[ file attach failed — ${e.message} ]`, ts: new Date().toISOString() }]);
+    }
+  };
+
   const send = async () => {
     const msg = text.trim();
     if (!msg || sending) return;
     setSending(true);
     setText("");
+    setFileStatus("");
     speechBaseRef.current = "";
     if (listening && recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch (_) { /* noop */ }
@@ -213,9 +241,11 @@ function Chat() {
           {sending && <div className="thinking">considering</div>}
         </div>
         <div className="panel-input">
-          <div className="speech-status">{listening ? "listening… tap mic again to stop" : speechSupported ? "free speech input available" : "speech input unsupported here"}</div>
+          <div className="speech-status">{fileStatus || (listening ? "listening… tap mic again to stop" : speechSupported ? "free speech input available" : "speech input unsupported here")}</div>
+          <input ref={fileInputRef} className="hidden-file-input" type="file" accept=".txt,.md,.json,.js,.jsx,.ts,.tsx,.py,.css,.html,.log,.csv,.yml,.yaml,.xml,.sql,text/*,application/json" onChange={attachFile} />
           <div className="input-row">
             <textarea className="input" placeholder="Say something real..." value={text} disabled={sending} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} />
+            <button className="file-btn" onClick={openFilePicker} disabled={sending} aria-label="attach file"><Paperclip size={14} /></button>
             <button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleSpeech} disabled={sending} aria-label={listening ? "stop voice input" : "start voice input"}>{listening ? <MicOff size={14} /> : <Mic size={14} />}</button>
             <button className="send" onClick={send} disabled={sending || !text.trim()} aria-label="send"><Send size={14} /></button>
           </div>
