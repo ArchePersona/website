@@ -1,16 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Send, LogOut, Shield, Copy, ClipboardCopy } from "lucide-react";
+import { Send, LogOut, Shield, ClipboardCopy } from "lucide-react";
 import { useAuth } from "./AuthContext.jsx";
 import "./App.css";
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
-if (!BACKEND_URL) {
-  throw new Error("VITE_BACKEND_URL is not configured.");
-}
-
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://brunel-5lxo.onrender.com";
 const API = `${BACKEND_URL}/api`;
 
 function Chat() {
