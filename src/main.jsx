@@ -31,13 +31,7 @@ function LandingPage() {
         <section className="hero" aria-label="ARCHE hero">
           <div className="present-line">Proudly Presents</div>
           <h1 className="arche-title">ARCHE</h1>
-          <div className="acronym-line" aria-label="Adaptive Relational Cognitive Human Emulator">
-            <span>Adaptive</span>
-            <span>Relational</span>
-            <span>Cognitive</span>
-            <span>Human</span>
-            <span>Emulator</span>
-          </div>
+          <div className="acronym-line">Adaptive Relational Cognitive Human Emulator</div>
 
           <div className="slogan-stack">
             <div className="slogan-primary">Artificial <span className="social">Social</span> Intelligence.</div>
