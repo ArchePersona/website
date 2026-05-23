@@ -119,14 +119,9 @@ function Chat() {
     };
     recognition.onresult = (event) => {
       let transcriptText = "";
-
-      for (let i = 0; i < event.results.length; i += 1) {
-        transcriptText += event.results[i][0]?.transcript || "";
-      }
-
+      for (let i = 0; i < event.results.length; i += 1) transcriptText += event.results[i][0]?.transcript || "";
       const spoken = transcriptText.trim();
       const base = speechBaseRef.current.trim();
-
       if (spoken) setText(base ? `${base} ${spoken}` : spoken);
     };
 
@@ -148,11 +143,9 @@ function Chat() {
       setMessages((m) => [...m, { role: "assistant", content: "[ free speech input is not supported in this browser — try mobile Chrome or type it in ]", plain: null, ts: new Date().toISOString() }]);
       return;
     }
-
     try {
-      if (listening) {
-        recognitionRef.current.stop();
-      } else {
+      if (listening) recognitionRef.current.stop();
+      else {
         speechBaseRef.current = text;
         recognitionRef.current.start();
       }
@@ -171,7 +164,6 @@ function Chat() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-
     try {
       const raw = await file.text();
       const truncated = raw.length > MAX_FILE_CHARS;
@@ -246,7 +238,7 @@ function Chat() {
     if (!iso) return "";
     const d = new Date(iso);
     const pad = (n) => String(n).padStart(2, "0");
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}/${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
   const formatThread = () => pairs.map((p) => [
@@ -254,6 +246,7 @@ function Chat() {
     p.plain && `CUS_SER_REP_1337: ${p.plain}`,
     p.assistant && `BRUNEL: ${p.assistant}`,
   ].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
+
   const copyThread = async () => {
     await navigator.clipboard.writeText(formatThread());
     setCopiedKey("thread");
@@ -279,7 +272,6 @@ function Chat() {
       <div className="topbar">
         <div className="brand">
           <div className="brand-name">BRUNEL</div>
-          <div className="brand-rule" />
           <div className="brand-sub">Powered by ARCHE</div>
         </div>
         <div className="topbar-right">
@@ -299,12 +291,20 @@ function Chat() {
       <div className={doubleMode ? "chat-grid double" : "chat-grid single"}>
         {doubleMode && (
           <div className="panel panel-plain">
-            <div className="panel-title">CUS_SER_REP_1337</div>
+            <div className="panel-title panel-title-plain">
+              <div className="main-title">CUS_SER_REP_1337</div>
+              <div className="sub-title">Conventional customer service entity</div>
+            </div>
             {renderPairs("plain")}
           </div>
         )}
         <div className={doubleMode ? "panel panel-rk" : "panel panel-rk solo"}>
-          {doubleMode && <div className="panel-title panel-title-rk">BRUNEL</div>}
+          {doubleMode && (
+            <div className="panel-title panel-title-rk">
+              <div className="main-title"><span>BRUNEL</span><span className="powered">Powered by ARCHE</span></div>
+              <div className="sub-title">Artificial Social Intelligence</div>
+            </div>
+          )}
           {renderPairs("rk")}
         </div>
       </div>
