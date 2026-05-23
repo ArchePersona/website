@@ -111,10 +111,12 @@ button, input, textarea, select { font: inherit; }
 
 .chat-grid.double {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, .65fr) minmax(0, 1.25fr);
+  gap: 16px;
   flex: 1;
   min-height: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .chat-grid.single {
@@ -141,10 +143,18 @@ button, input, textarea, select { font: inherit; }
   border: 1px solid rgba(184,148,10,.10);
   background: var(--panel);
   min-height: 0;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .panel-plain {
   border-right: 1px solid rgba(184,148,10,.18);
+}
+
+.panel-seed {
+  background: rgba(255,255,255,.008);
+  border-color: rgba(184,148,10,.16);
 }
 
 .panel-rk {
@@ -153,34 +163,56 @@ button, input, textarea, select { font: inherit; }
 }
 
 .panel-title {
+  flex: 0 0 auto;
   padding: 14px 16px 10px;
   border-bottom: 1px solid rgba(255,255,255,.04);
+  min-width: 0;
 }
 
-.panel-title-rk {
+.panel-title-rk,
+.panel-title-plain,
+.panel-title-seed {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
 .panel-title-rk .main-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
   font-size: 18px;
   font-weight: 300;
   letter-spacing: 0.14em;
   color: var(--white);
 }
 
-.panel-title-rk .sub-title {
-  font-size: 10px;
-  letter-spacing: 0.22em;
+.panel-title-rk .powered {
+  font-size: 9px;
+  letter-spacing: .18em;
   text-transform: uppercase;
   color: var(--gold);
 }
 
-.panel-title-plain {
-  font-size: 11px;
-  letter-spacing: 0.18em;
+.panel-title-rk .sub-title,
+.panel-title-plain .sub-title,
+.panel-title-seed .sub-title {
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--mid);
+}
+
+.panel-title-rk .sub-title {
+  color: var(--gold);
+}
+
+.panel-title-plain .main-title,
+.panel-title-seed .main-title {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--white);
 }
 
 .chat-body {
@@ -192,12 +224,18 @@ button, input, textarea, select { font: inherit; }
   flex-direction: column;
   gap: 18px;
   min-height: 0;
+  min-width: 0;
+}
+
+.seed-body {
+  align-items: stretch;
 }
 
 .pair {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .bubble {
@@ -208,13 +246,20 @@ button, input, textarea, select { font: inherit; }
   word-wrap: break-word;
 }
 
-.bubble-user {
+.bubble-user,
+.bubble-seed {
   align-self: flex-end;
   color: var(--white);
   padding: 10px 14px;
   background: rgba(184,148,10,.045);
   border-left: 1px solid rgba(184,148,10,.45);
   border-radius: 2px;
+}
+
+.bubble-seed {
+  align-self: stretch;
+  max-width: 100%;
+  text-align: left;
 }
 
 .bubble-assistant {
@@ -243,6 +288,10 @@ button, input, textarea, select { font: inherit; }
   text-transform: uppercase;
   align-self: flex-start;
   padding-left: 2px;
+}
+
+.seed-time {
+  align-self: flex-end;
 }
 
 .empty-state {
@@ -328,6 +377,12 @@ button.file-btn {
   letter-spacing: .16em;
   color: var(--dim);
   text-transform: uppercase;
+}
+
+@media (max-width: 1100px) {
+  .chat-grid.double {
+    grid-template-columns: minmax(0, 1fr) minmax(180px, .7fr) minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 900px) {
