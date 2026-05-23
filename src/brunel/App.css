@@ -112,7 +112,7 @@ button, input, textarea, select { font: inherit; }
 .chat-grid.double {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.22fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 16px;
   flex: 1;
   min-height: 0;
@@ -151,13 +151,13 @@ button, input, textarea, select { font: inherit; }
 
 .panel-plain {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 1;
   border-right: 1px solid rgba(184,148,10,.18);
 }
 
 .panel-seed {
   grid-column: 1 / -1;
-  grid-row: 1;
+  grid-row: 2;
   height: auto;
   min-height: 0;
   background: rgba(255,255,255,.008);
@@ -166,7 +166,7 @@ button, input, textarea, select { font: inherit; }
 
 .panel-rk {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 1;
   background: var(--panel-rk);
   border-color: rgba(184,148,10,.18);
 }
@@ -231,7 +231,7 @@ button, input, textarea, select { font: inherit; }
 
 .panel-seed .panel-title {
   align-items: center;
-  padding: 9px 12px 4px;
+  padding: 8px 12px 2px;
   border-bottom: 0;
 }
 
@@ -253,10 +253,10 @@ button, input, textarea, select { font: inherit; }
 
 .seed-body {
   flex: 0 0 auto;
-  max-height: 124px;
+  max-height: 108px;
   overflow-y: auto;
   align-items: center;
-  padding: 8px 18px 14px;
+  padding: 6px 18px 12px;
 }
 
 .pair {
@@ -357,7 +357,8 @@ button, input, textarea, select { font: inherit; }
 
 .speech-status {
   min-height: 14px;
-  margin: 0 0 6px;
+  margin: 0 auto 6px;
+  max-width: 760px;
   font-size: 9px;
   letter-spacing: .14em;
   text-transform: uppercase;
@@ -368,6 +369,8 @@ button, input, textarea, select { font: inherit; }
   display: flex;
   gap: 6px;
   align-items: stretch;
+  max-width: 760px;
+  margin: 0 auto;
 }
 
 textarea.input {
