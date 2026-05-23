@@ -9,11 +9,44 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://brunel-5lxo.onr
 const API = `${BACKEND_URL}/api`;
 const MAX_FILE_CHARS = 18000;
 
+const STATE_VISUALS = {
+  baseline: { color: "#7CFF8A", className: "state-baseline" },
+  tender: { color: "#B8FFD0", className: "state-tender" },
+  eager: { color: "#8DFF74", className: "state-eager" },
+  focused: { color: "#9CFFB0", className: "state-focused" },
+  reflective: { color: "#A9FFD8", className: "state-reflective" },
+  steady: { color: "#78E88D", className: "state-steady" },
+  guarded: { color: "#D6FF7A", className: "state-guarded" },
+  concerned: { color: "#CFFF6B", className: "state-concerned" },
+  restless: { color: "#66FF66", className: "state-restless" },
+  sharp: { color: "#39FF6A", className: "state-sharp" },
+};
+
+const MODE_VISUALS = {
+  "000": { label: "Conversation", className: "mode-conversation" },
+  "111": { label: "Companion", className: "mode-companion" },
+  "222": { label: "Assistant", className: "mode-assistant" },
+  "333": { label: "Tutor", className: "mode-tutor" },
+  "444": { label: "Creative", className: "mode-creative" },
+  "555": { label: "Hearth", className: "mode-hearth" },
+  "666": { label: "Technical", className: "mode-technical" },
+  "777": { label: "Research", className: "mode-research" },
+  "888": { label: "Sentinel", className: "mode-sentinel" },
+  "911": { label: "Emergency", className: "mode-emergency" },
+};
+
+const TEST_VISUAL_STATE = "focused";
+const TEST_VISUAL_MODE = "666";
+
 function Chat() {
   const { user, session, signOut } = useAuth();
   const navigate = useNavigate();
   const sessionId = user?.id || "";
   const isAdmin = (user?.email || "").toLowerCase() === "archepersona@gmail.com";
+  const assistantVisualClass = [
+    STATE_VISUALS[TEST_VISUAL_STATE]?.className || STATE_VISUALS.baseline.className,
+    MODE_VISUALS[TEST_VISUAL_MODE]?.className || MODE_VISUALS["000"].className,
+  ].join(" ");
 
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
@@ -234,7 +267,7 @@ function Chat() {
           {pairs.length === 0 ? <div className="empty-state">say something — i'll remember it</div> : pairs.map((p, i) => (
             <div key={i} className="pair">
               {p.user && <div className="bubble bubble-user">{p.user}</div>}
-              {p.assistant && <div className="bubble bubble-assistant">{p.assistant}</div>}
+              {p.assistant && <div className={`bubble bubble-assistant ${assistantVisualClass}`}>{p.assistant}</div>}
               {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
             </div>
           ))}
