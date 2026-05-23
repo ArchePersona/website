@@ -55,10 +55,13 @@ function Chat() {
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const [fileStatus, setFileStatus] = useState("");
+  const [viewMode, setViewMode] = useState("single");
   const recognitionRef = useRef(null);
   const speechBaseRef = useRef("");
   const fileInputRef = useRef(null);
-  const scrollRef = useRef(null);
+  const rkScrollRef = useRef(null);
+  const plainScrollRef = useRef(null);
+  const doubleMode = isAdmin && viewMode === "double";
 
   const authHeader = useMemo(
     () => (session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
@@ -76,7 +79,7 @@ function Chat() {
         setMessages(
           (d.rk_history || []).flatMap((t) => [
             { role: "user", content: t.user, ts: t.ts || null },
-            { role: "assistant", content: t.assistant, ts: t.ts || null },
+            { role: "assistant", content: t.assistant, plain: null, ts: t.ts || null },
           ])
         );
       } catch (e) {
@@ -87,8 +90,13 @@ function Chat() {
   }, [sessionId, session?.access_token, authHeader]);
 
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, sending]);
+    if (rkScrollRef.current) rkScrollRef.current.scrollTop = rkScrollRef.current.scrollHeight;
+    if (plainScrollRef.current) plainScrollRef.current.scrollTop = plainScrollRef.current.scrollHeight;
+  }, [messages, sending, doubleMode]);
+
+  useEffect(() => {
+    if (!isAdmin && viewMode !== "single") setViewMode("single");
+  }, [isAdmin, viewMode]);
 
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -107,7 +115,7 @@ function Chat() {
     recognition.onerror = (event) => {
       setListening(false);
       const reason = event?.error || "speech recognition error";
-      setMessages((m) => [...m, { role: "assistant", content: `[ free speech input failed — ${reason} ]`, ts: new Date().toISOString() }]);
+      setMessages((m) => [...m, { role: "assistant", content: `[ free speech input failed — ${reason} ]`, plain: null, ts: new Date().toISOString() }]);
     };
     recognition.onresult = (event) => {
       let transcriptText = "";
@@ -137,7 +145,7 @@ function Chat() {
 
   const toggleSpeech = () => {
     if (!speechSupported || !recognitionRef.current) {
-      setMessages((m) => [...m, { role: "assistant", content: "[ free speech input is not supported in this browser — try mobile Chrome or type it in ]", ts: new Date().toISOString() }]);
+      setMessages((m) => [...m, { role: "assistant", content: "[ free speech input is not supported in this browser — try mobile Chrome or type it in ]", plain: null, ts: new Date().toISOString() }]);
       return;
     }
 
@@ -150,7 +158,7 @@ function Chat() {
       }
     } catch (e) {
       setListening(false);
-      setMessages((m) => [...m, { role: "assistant", content: `[ free speech input failed — ${e.message} ]`, ts: new Date().toISOString() }]);
+      setMessages((m) => [...m, { role: "assistant", content: `[ free speech input failed — ${e.message} ]`, plain: null, ts: new Date().toISOString() }]);
     }
   };
 
@@ -174,13 +182,14 @@ function Chat() {
       window.setTimeout(() => setFileStatus(""), 2400);
     } catch (e) {
       setFileStatus(`could not read ${file.name}`);
-      setMessages((m) => [...m, { role: "assistant", content: `[ file attach failed — ${e.message} ]`, ts: new Date().toISOString() }]);
+      setMessages((m) => [...m, { role: "assistant", content: `[ file attach failed — ${e.message} ]`, plain: null, ts: new Date().toISOString() }]);
     }
   };
 
   const send = async () => {
     const msg = text.trim();
     if (!msg || sending) return;
+    const requestDouble = doubleMode;
     setSending(true);
     setText("");
     setFileStatus("");
@@ -190,16 +199,16 @@ function Chat() {
     }
     setMessages((m) => [...m, { role: "user", content: msg, ts: new Date().toISOString() }]);
     try {
-      const r = await axios.post(`${API}/chat`, { message: msg, target: "rk_only" }, { headers: authHeader, timeout: 45000 });
+      const r = await axios.post(`${API}/chat`, { message: msg, target: requestDouble ? "both" : "rk_only" }, { headers: authHeader, timeout: 45000 });
       const d = r.data;
       const content = d.rk_response || d.plain_response || "";
-      if (content) {
-        setMessages((m) => [...m, { role: "assistant", content, ts: new Date().toISOString() }]);
+      if (content || d.plain_response) {
+        setMessages((m) => [...m, { role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: new Date().toISOString() }]);
       }
     } catch (e) {
       console.error(e);
       const errMsg = `[ link to engine failed — ${e?.response?.data?.detail || e.message} ]`;
-      setMessages((m) => [...m, { role: "assistant", content: errMsg, ts: new Date().toISOString() }]);
+      setMessages((m) => [...m, { role: "assistant", content: errMsg, plain: requestDouble ? errMsg : null, ts: new Date().toISOString() }]);
     } finally {
       setSending(false);
     }
@@ -218,14 +227,15 @@ function Chat() {
     for (const m of messages) {
       if (m.role === "user") {
         if (pending) out.push(pending);
-        pending = { user: m.content, userTs: m.ts, assistant: null, assistantTs: null };
+        pending = { user: m.content, userTs: m.ts, assistant: null, plain: null, assistantTs: null };
       } else if (pending) {
         pending.assistant = m.content;
+        pending.plain = m.plain || null;
         pending.assistantTs = m.ts;
         out.push(pending);
         pending = null;
       } else {
-        out.push({ user: null, userTs: null, assistant: m.content, assistantTs: m.ts });
+        out.push({ user: null, userTs: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts });
       }
     }
     if (pending) out.push(pending);
@@ -239,12 +249,30 @@ function Chat() {
     return `${pad(d.getHours())}:${pad(d.getMinutes())}/${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${String(d.getFullYear()).slice(-2)}`;
   };
 
-  const formatThread = () => pairs.map((p) => [p.user && `You: ${p.user}`, p.assistant && `BRUNEL: ${p.assistant}`].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
+  const formatThread = () => pairs.map((p) => [
+    p.user && `You: ${p.user}`,
+    p.plain && `CUS_SER_REP_1337: ${p.plain}`,
+    p.assistant && `BRUNEL: ${p.assistant}`,
+  ].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
   const copyThread = async () => {
     await navigator.clipboard.writeText(formatThread());
     setCopiedKey("thread");
     setTimeout(() => setCopiedKey(null), 1200);
   };
+
+  const renderPairs = (kind) => (
+    <div className="chat-body" ref={kind === "plain" ? plainScrollRef : rkScrollRef}>
+      {pairs.length === 0 ? <div className="empty-state">say something — i'll remember it</div> : pairs.map((p, i) => (
+        <div key={i} className="pair">
+          {p.user && <div className="bubble bubble-user">{p.user}</div>}
+          {kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}
+          {kind === "rk" && p.assistant && <div className={`bubble bubble-assistant ${assistantVisualClass}`}>{p.assistant}</div>}
+          {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
+        </div>
+      ))}
+      {sending && <div className="thinking">considering</div>}
+    </div>
+  );
 
   return (
     <div className="app">
@@ -256,32 +284,39 @@ function Chat() {
         </div>
         <div className="topbar-right">
           <span className="session-id">{user?.email || "—"}</span>
+          {isAdmin && (
+            <div className="view-toggle" aria-label="chat view mode">
+              <button className={viewMode === "single" ? "active" : ""} onClick={() => setViewMode("single")}>Single</button>
+              <button className={viewMode === "double" ? "active" : ""} onClick={() => setViewMode("double")}>Double</button>
+            </div>
+          )}
           <button className="reset-btn" onClick={copyThread} disabled={pairs.length === 0}><ClipboardCopy size={11} /> {copiedKey === "thread" ? "Copied" : "Copy"}</button>
           {isAdmin && <button className="reset-btn" onClick={() => navigate("/brunel/admin")}><Shield size={11} /> Admin</button>}
           <button className="reset-btn" onClick={() => signOut()}><LogOut size={11} /> Sign out</button>
         </div>
       </div>
 
-      <div className="panel panel-rk solo">
-        <div className="chat-body" ref={scrollRef}>
-          {pairs.length === 0 ? <div className="empty-state">say something — i'll remember it</div> : pairs.map((p, i) => (
-            <div key={i} className="pair">
-              {p.user && <div className="bubble bubble-user">{p.user}</div>}
-              {p.assistant && <div className={`bubble bubble-assistant ${assistantVisualClass}`}>{p.assistant}</div>}
-              {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
-            </div>
-          ))}
-          {sending && <div className="thinking">considering</div>}
-        </div>
-        <div className="panel-input">
-          <div className="speech-status">{fileStatus || (listening ? "listening… tap mic again to stop" : speechSupported ? "free speech input available" : "speech input unsupported here")}</div>
-          <input ref={fileInputRef} className="hidden-file-input" type="file" accept=".txt,.md,.json,.js,.jsx,.ts,.tsx,.py,.css,.html,.log,.csv,.yml,.yaml,.xml,.sql,text/*,application/json" onChange={attachFile} />
-          <div className="input-row">
-            <textarea className="input" placeholder="Say something real..." value={text} disabled={sending} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} />
-            <button className="file-btn" onClick={openFilePicker} disabled={sending} aria-label="attach file"><Paperclip size={14} /></button>
-            <button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleSpeech} disabled={sending} aria-label={listening ? "stop voice input" : "start voice input"}>{listening ? <MicOff size={14} /> : <Mic size={14} />}</button>
-            <button className="send" onClick={send} disabled={sending || !text.trim()} aria-label="send"><Send size={14} /></button>
+      <div className={doubleMode ? "chat-grid double" : "chat-grid single"}>
+        {doubleMode && (
+          <div className="panel panel-plain">
+            <div className="panel-title">CUS_SER_REP_1337</div>
+            {renderPairs("plain")}
           </div>
+        )}
+        <div className={doubleMode ? "panel panel-rk" : "panel panel-rk solo"}>
+          {doubleMode && <div className="panel-title panel-title-rk">BRUNEL</div>}
+          {renderPairs("rk")}
+        </div>
+      </div>
+
+      <div className="panel-input shared-seed-box">
+        <div className="speech-status">{fileStatus || (listening ? "listening… tap mic again to stop" : speechSupported ? "free speech input available" : "speech input unsupported here")}</div>
+        <input ref={fileInputRef} className="hidden-file-input" type="file" accept=".txt,.md,.json,.js,.jsx,.ts,.tsx,.py,.css,.html,.log,.csv,.yml,.yaml,.xml,.sql,text/*,application/json" onChange={attachFile} />
+        <div className="input-row">
+          <textarea className="input" placeholder="Seed the same prompt..." value={text} disabled={sending} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} />
+          <button className="file-btn" onClick={openFilePicker} disabled={sending} aria-label="attach file"><Paperclip size={14} /></button>
+          <button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleSpeech} disabled={sending} aria-label={listening ? "stop voice input" : "start voice input"}>{listening ? <MicOff size={14} /> : <Mic size={14} />}</button>
+          <button className="send" onClick={send} disabled={sending || !text.trim()} aria-label="send"><Send size={14} /></button>
         </div>
       </div>
 
