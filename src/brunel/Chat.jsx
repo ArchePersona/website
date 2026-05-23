@@ -61,6 +61,7 @@ function Chat() {
   const fileInputRef = useRef(null);
   const rkScrollRef = useRef(null);
   const plainScrollRef = useRef(null);
+  const seedScrollRef = useRef(null);
   const doubleMode = isAdmin && viewMode === "double";
 
   const authHeader = useMemo(
@@ -92,6 +93,7 @@ function Chat() {
   useEffect(() => {
     if (rkScrollRef.current) rkScrollRef.current.scrollTop = rkScrollRef.current.scrollHeight;
     if (plainScrollRef.current) plainScrollRef.current.scrollTop = plainScrollRef.current.scrollHeight;
+    if (seedScrollRef.current) seedScrollRef.current.scrollTop = seedScrollRef.current.scrollHeight;
   }, [messages, sending, doubleMode]);
 
   useEffect(() => {
@@ -253,17 +255,40 @@ function Chat() {
     setTimeout(() => setCopiedKey(null), 1200);
   };
 
-  const renderPairs = (kind) => (
+  const renderResponsePairs = (kind) => (
     <div className="chat-body" ref={kind === "plain" ? plainScrollRef : rkScrollRef}>
-      {pairs.length === 0 ? <div className="empty-state">say something — i'll remember it</div> : pairs.map((p, i) => (
+      {pairs.length === 0 ? <div className="empty-state">waiting for seed</div> : pairs.map((p, i) => (
         <div key={i} className="pair">
-          {p.user && <div className="bubble bubble-user">{p.user}</div>}
           {kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}
           {kind === "rk" && p.assistant && <div className={`bubble bubble-assistant ${assistantVisualClass}`}>{p.assistant}</div>}
           {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
         </div>
       ))}
       {sending && <div className="thinking">considering</div>}
+    </div>
+  );
+
+  const renderSinglePairs = () => (
+    <div className="chat-body" ref={rkScrollRef}>
+      {pairs.length === 0 ? <div className="empty-state">say something — i'll remember it</div> : pairs.map((p, i) => (
+        <div key={i} className="pair">
+          {p.user && <div className="bubble bubble-user">{p.user}</div>}
+          {p.assistant && <div className={`bubble bubble-assistant ${assistantVisualClass}`}>{p.assistant}</div>}
+          {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
+        </div>
+      ))}
+      {sending && <div className="thinking">considering</div>}
+    </div>
+  );
+
+  const renderSeedPairs = () => (
+    <div className="chat-body seed-body" ref={seedScrollRef}>
+      {pairs.length === 0 ? <div className="empty-state">seed column</div> : pairs.map((p, i) => (
+        <div key={i} className="pair seed-pair">
+          {p.user && <div className="bubble bubble-seed">{p.user}</div>}
+          {p.userTs && <div className="pair-timestamp seed-time">{fmtTs(p.userTs)}</div>}
+        </div>
+      ))}
     </div>
   );
 
@@ -295,7 +320,16 @@ function Chat() {
               <div className="main-title">CUS_SER_REP_1337</div>
               <div className="sub-title">Conventional customer service entity</div>
             </div>
-            {renderPairs("plain")}
+            {renderResponsePairs("plain")}
+          </div>
+        )}
+        {doubleMode && (
+          <div className="panel panel-seed">
+            <div className="panel-title panel-title-seed">
+              <div className="main-title">SEED</div>
+              <div className="sub-title">same prompt / divergent landing</div>
+            </div>
+            {renderSeedPairs()}
           </div>
         )}
         <div className={doubleMode ? "panel panel-rk" : "panel panel-rk solo"}>
@@ -305,7 +339,7 @@ function Chat() {
               <div className="sub-title">Artificial Social Intelligence</div>
             </div>
           )}
-          {renderPairs("rk")}
+          {doubleMode ? renderResponsePairs("rk") : renderSinglePairs()}
         </div>
       </div>
 
