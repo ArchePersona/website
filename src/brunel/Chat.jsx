@@ -23,20 +23,20 @@ const STATE_VISUALS = {
 };
 
 const MODE_VISUALS = {
-  "000": { label: "Conversation", className: "mode-conversation" },
-  "111": { label: "Companion", className: "mode-companion" },
-  "222": { label: "Assistant", className: "mode-assistant" },
-  "333": { label: "Tutor", className: "mode-tutor" },
-  "444": { label: "Creative", className: "mode-creative" },
-  "555": { label: "Hearth", className: "mode-hearth" },
-  "666": { label: "Technical", className: "mode-technical" },
-  "777": { label: "Research", className: "mode-research" },
-  "888": { label: "Sentinel", className: "mode-sentinel" },
+  "011": { label: "Companion", className: "mode-companion" },
+  "111": { label: "Assistant", className: "mode-assistant" },
+  "211": { label: "Hearth", className: "mode-hearth" },
+  "311": { label: "Creative", className: "mode-creative" },
+  "411": { label: "Research", className: "mode-research" },
+  "511": { label: "Tutor", className: "mode-tutor" },
+  "611": { label: "Operations", className: "mode-operations" },
+  "711": { label: "Technical", className: "mode-technical" },
+  "811": { label: "Sentinel", className: "mode-sentinel" },
   "911": { label: "Emergency", className: "mode-emergency" },
 };
 
 const TEST_VISUAL_STATE = "focused";
-const TEST_VISUAL_MODE = "666";
+const TEST_VISUAL_MODE = "711";
 
 function Chat() {
   const { user, session, signOut } = useAuth();
