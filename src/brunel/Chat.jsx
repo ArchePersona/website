@@ -10,16 +10,16 @@ const API = `${BACKEND_URL}/api`;
 const MAX_FILE_CHARS = 18000;
 
 const STATE_VISUALS = {
-  baseline: { color: "#7CFF8A", className: "state-baseline" },
-  tender: { color: "#B8FFD0", className: "state-tender" },
-  eager: { color: "#8DFF74", className: "state-eager" },
-  focused: { color: "#9CFFB0", className: "state-focused" },
-  reflective: { color: "#A9FFD8", className: "state-reflective" },
-  steady: { color: "#78E88D", className: "state-steady" },
-  guarded: { color: "#D6FF7A", className: "state-guarded" },
-  concerned: { color: "#CFFF6B", className: "state-concerned" },
-  restless: { color: "#66FF66", className: "state-restless" },
-  sharp: { color: "#39FF6A", className: "state-sharp" },
+  St0: { label: "Baseline", color: "#7CFF8A", className: "state-baseline" },
+  St1: { label: "Tender", color: "#B8FFD0", className: "state-tender" },
+  St2: { label: "Eager", color: "#8DFF74", className: "state-eager" },
+  St3: { label: "Steady", color: "#78E88D", className: "state-steady" },
+  St4: { label: "Reflective", color: "#A9FFD8", className: "state-reflective" },
+  St5: { label: "Focused", color: "#9CFFB0", className: "state-focused" },
+  St6: { label: "Guarded", color: "#D6FF7A", className: "state-guarded" },
+  St7: { label: "Concerned", color: "#CFFF6B", className: "state-concerned" },
+  St8: { label: "Restless", color: "#66FF66", className: "state-restless" },
+  St9: { label: "Sharp", color: "#39FF6A", className: "state-sharp" },
 };
 
 const MODE_VISUALS = {
@@ -43,14 +43,14 @@ function Chat() {
   const isAdmin = (user?.email || "").toLowerCase() === "archepersona@gmail.com";
 
   const getAssistantVisualClass = (message) => {
-  const stateKey = message?.state || "baseline";
-  const modeKey = message?.mode || "011";
+    const stateKey = message?.state || "St0";
+    const modeKey = message?.mode || "011";
 
-  return [
-    STATE_VISUALS[stateKey]?.className || STATE_VISUALS.baseline.className,
-    MODE_VISUALS[modeKey]?.className || MODE_VISUALS["011"].className,
-  ].join(" ");
-};
+    return [
+      STATE_VISUALS[stateKey]?.className || STATE_VISUALS.St0.className,
+      MODE_VISUALS[modeKey]?.className || MODE_VISUALS["011"].className,
+    ].join(" ");
+  };
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
   const [text, setText] = useState("");
@@ -92,7 +92,7 @@ function Chat() {
         setMessages(
           (d.rk_history || []).flatMap((t, index) => [
             { id: `hydrated-user-${index}`, role: "user", content: t.user, ts: t.ts || null },
-            { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null },
+            { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null, state: t.current_state_id || "St0", mode: t.current_mode_id || "011" },
           ])
         );
       } catch (e) {
@@ -413,6 +413,8 @@ function Chat() {
             content: "",
             plain: requestDouble ? d.plain_response || "" : null,
             ts: new Date().toISOString(),
+            state: d.current_state_id || "St0",
+            mode: d.current_mode_id || "011",
           },
         ]);
 
@@ -428,6 +430,8 @@ function Chat() {
             content,
             plain: requestDouble ? d.plain_response || "" : null,
             ts: new Date().toISOString(),
+            state: d.current_state_id || "St0",
+            mode: d.current_mode_id || "011",
           },
         ]);
       }
@@ -442,6 +446,8 @@ function Chat() {
           content: errMsg,
           plain: requestDouble ? errMsg : null,
           ts: new Date().toISOString(),
+          state: "St0",
+          mode: "011",
         },
       ]);
     } finally {
@@ -470,11 +476,15 @@ function Chat() {
           assistant: null,
           plain: null,
           assistantTs: null,
+          assistantState: "St0",
+          assistantMode: "011",
         };
       } else if (pending) {
         pending.assistant = m.content;
         pending.plain = m.plain || null;
         pending.assistantTs = m.ts;
+        pending.assistantState = m.state || "St0";
+        pending.assistantMode = m.mode || "011";
         out.push(pending);
         pending = null;
       } else {
@@ -484,6 +494,8 @@ function Chat() {
           assistant: m.content,
           plain: m.plain || null,
           assistantTs: m.ts,
+          assistantState: m.state || "St0",
+          assistantMode: m.mode || "011",
         });
       }
     }
@@ -520,7 +532,7 @@ function Chat() {
           {p.user && <div className="bubble bubble-user">{p.user}</div>}
           {kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}
           {kind === "rk" && p.assistant !== null && (
-            <div className={`bubble bubble-assistant ${assistantVisualClass}`}>
+            <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>
               {p.assistant || (speaking ? "…" : "")}
             </div>
           )}
@@ -537,7 +549,7 @@ function Chat() {
         <div key={i} className="pair">
           {p.user && <div className="bubble bubble-user">{p.user}</div>}
           {p.assistant !== null && (
-            <div className={`bubble bubble-assistant ${assistantVisualClass}`}>
+            <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>
               {p.assistant || (speaking ? "…" : "")}
             </div>
           )}
