@@ -261,7 +261,7 @@ function Chat() {
   };
 
   const speakText = async (textToSpeak, options = {}) => {
-    if (!textToSpeak || speaking) return;
+    if (!textToSpeak) return;
 
     const { revealMessageId = null } = options;
 
