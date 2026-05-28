@@ -63,6 +63,7 @@ function Chat() {
   const recognitionRef = useRef(null);
   const speechBaseRef = useRef("");
   const audioRef = useRef(null);
+  const revealTimerRef = useRef(null);
   const fileInputRef = useRef(null);
   const rkScrollRef = useRef(null);
   const plainScrollRef = useRef(null);
@@ -87,9 +88,9 @@ function Chat() {
         const d = r.data;
 
         setMessages(
-          (d.rk_history || []).flatMap((t) => [
-            { role: "user", content: t.user, ts: t.ts || null },
-            { role: "assistant", content: t.assistant, plain: null, ts: t.ts || null },
+          (d.rk_history || []).flatMap((t, index) => [
+            { id: `hydrated-user-${index}`, role: "user", content: t.user, ts: t.ts || null },
+            { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null },
           ])
         );
       } catch (e) {
@@ -156,7 +157,70 @@ function Chat() {
     };
   }, []);
 
-  const clearLocalChat = () => setMessages([]);
+  const clearRevealTimer = () => {
+    if (revealTimerRef.current) {
+      window.clearInterval(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+  };
+
+  const setAssistantContent = (messageId, content) => {
+    setMessages((current) =>
+      current.map((m) =>
+        m.id === messageId
+          ? { ...m, content }
+          : m
+      )
+    );
+  };
+
+  const estimateRevealMs = (content) => {
+    const words = (content || "").trim().split(/\s+/).filter(Boolean).length;
+    const estimated = words * 360;
+    return Math.max(1800, Math.min(16000, estimated));
+  };
+
+  const revealText = (messageId, fullText, durationMs) => {
+    clearRevealTimer();
+
+    const textToReveal = fullText || "";
+    const totalChars = textToReveal.length;
+
+    if (!messageId || !textToReveal) return;
+
+    if (totalChars < 2) {
+      setAssistantContent(messageId, textToReveal);
+      return;
+    }
+
+    const safeDuration = durationMs || estimateRevealMs(textToReveal);
+    const tickMs = 35;
+    const steps = Math.max(1, Math.ceil(safeDuration / tickMs));
+    const charsPerTick = Math.max(1, Math.ceil(totalChars / steps));
+
+    let shown = 0;
+
+    setAssistantContent(messageId, "");
+
+    revealTimerRef.current = window.setInterval(() => {
+      shown = Math.min(totalChars, shown + charsPerTick);
+      setAssistantContent(messageId, textToReveal.slice(0, shown));
+
+      if (shown >= totalChars) {
+        clearRevealTimer();
+      }
+    }, tickMs);
+  };
+
+  const clearLocalChat = () => {
+    clearRevealTimer();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setSpeaking(false);
+    setMessages([]);
+  };
 
   const toggleSpeech = () => {
     if (!speechSupported || !recognitionRef.current) return;
@@ -196,11 +260,14 @@ function Chat() {
     }
   };
 
-  const speakText = async (textToSpeak) => {
+  const speakText = async (textToSpeak, options = {}) => {
     if (!textToSpeak || speaking) return;
+
+    const { revealMessageId = null } = options;
 
     try {
       setSpeaking(true);
+      clearRevealTimer();
 
       if (audioRef.current) {
         audioRef.current.pause();
@@ -226,13 +293,41 @@ function Chat() {
 
       audioRef.current = audio;
 
+      audio.onloadedmetadata = () => {
+        const durationMs = Number.isFinite(audio.duration)
+          ? audio.duration * 1000
+          : estimateRevealMs(textToSpeak);
+
+        if (revealMessageId) {
+          revealText(revealMessageId, textToSpeak, durationMs);
+        }
+      };
+
+      audio.onplay = () => {
+        if (revealMessageId && !revealTimerRef.current) {
+          revealText(revealMessageId, textToSpeak, estimateRevealMs(textToSpeak));
+        }
+      };
+
       audio.onended = () => {
+        clearRevealTimer();
+
+        if (revealMessageId) {
+          setAssistantContent(revealMessageId, textToSpeak);
+        }
+
         setSpeaking(false);
         URL.revokeObjectURL(url);
         audioRef.current = null;
       };
 
       audio.onerror = () => {
+        clearRevealTimer();
+
+        if (revealMessageId) {
+          setAssistantContent(revealMessageId, textToSpeak);
+        }
+
         setSpeaking(false);
         URL.revokeObjectURL(url);
         audioRef.current = null;
@@ -241,6 +336,12 @@ function Chat() {
       await audio.play();
     } catch (err) {
       console.error(err);
+      clearRevealTimer();
+
+      if (revealMessageId) {
+        setAssistantContent(revealMessageId, textToSpeak);
+      }
+
       setSpeaking(false);
     }
   };
@@ -248,7 +349,7 @@ function Chat() {
   const speakLatest = async () => {
     const lastAssistant = [...messages]
       .reverse()
-      .find((m) => m.role === "assistant");
+      .find((m) => m.role === "assistant" && m.content);
 
     if (!lastAssistant?.content) return;
 
@@ -259,9 +360,14 @@ function Chat() {
     setVoiceEnabled((current) => {
       const next = !current;
 
-      if (!next && audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
+      if (!next) {
+        clearRevealTimer();
+
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+        }
+
         setSpeaking(false);
       }
 
@@ -275,10 +381,16 @@ function Chat() {
     if (!msg || sending) return;
 
     const requestDouble = doubleMode;
+    const userId = `user-${Date.now()}`;
+    const assistantId = `assistant-${Date.now() + 1}`;
 
     setSending(true);
     setText("");
-    setMessages((m) => [...m, { role: "user", content: msg, ts: new Date().toISOString() }]);
+
+    setMessages((m) => [
+      ...m,
+      { id: userId, role: "user", content: msg, ts: new Date().toISOString() },
+    ]);
 
     try {
       const r = await axios.post(
@@ -290,20 +402,32 @@ function Chat() {
       const d = r.data;
       const content = d.rk_response || d.plain_response || "";
 
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          content,
-          plain: requestDouble ? d.plain_response || "" : null,
-          ts: new Date().toISOString(),
-        },
-      ]);
-
       if (voiceEnabled && content) {
+        setMessages((m) => [
+          ...m,
+          {
+            id: assistantId,
+            role: "assistant",
+            content: "",
+            plain: requestDouble ? d.plain_response || "" : null,
+            ts: new Date().toISOString(),
+          },
+        ]);
+
         window.setTimeout(() => {
-          speakText(content);
-        }, 150);
+          speakText(content, { revealMessageId: assistantId });
+        }, 120);
+      } else {
+        setMessages((m) => [
+          ...m,
+          {
+            id: assistantId,
+            role: "assistant",
+            content,
+            plain: requestDouble ? d.plain_response || "" : null,
+            ts: new Date().toISOString(),
+          },
+        ]);
       }
     } catch (e) {
       const errMsg = `[ link to engine failed — ${e?.response?.data?.detail || e?.message || "unknown"} ]`;
@@ -311,6 +435,7 @@ function Chat() {
       setMessages((m) => [
         ...m,
         {
+          id: assistantId,
           role: "assistant",
           content: errMsg,
           plain: requestDouble ? errMsg : null,
@@ -392,7 +517,11 @@ function Chat() {
         <div key={i} className="pair">
           {p.user && <div className="bubble bubble-user">{p.user}</div>}
           {kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}
-          {kind === "rk" && p.assistant && <div className={`bubble bubble-assistant ${assistantVisualClass}`}>{p.assistant}</div>}
+          {kind === "rk" && p.assistant !== null && (
+            <div className={`bubble bubble-assistant ${assistantVisualClass}`}>
+              {p.assistant || (speaking ? "…" : "")}
+            </div>
+          )}
           {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
         </div>
       ))}
@@ -405,7 +534,11 @@ function Chat() {
       {pairs.length === 0 ? <div className="empty-state">say something — i'll remember it</div> : pairs.map((p, i) => (
         <div key={i} className="pair">
           {p.user && <div className="bubble bubble-user">{p.user}</div>}
-          {p.assistant && <div className={`bubble bubble-assistant ${assistantVisualClass}`}>{p.assistant}</div>}
+          {p.assistant !== null && (
+            <div className={`bubble bubble-assistant ${assistantVisualClass}`}>
+              {p.assistant || (speaking ? "…" : "")}
+            </div>
+          )}
           {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
         </div>
       ))}
@@ -497,7 +630,7 @@ function Chat() {
           <button
             className="voice-btn"
             onClick={speakLatest}
-            disabled={speaking || !messages.some((m) => m.role === "assistant")}
+            disabled={speaking || !messages.some((m) => m.role === "assistant" && m.content)}
             aria-label="play latest Brunel response"
             title="Play latest Brunel response"
           >
