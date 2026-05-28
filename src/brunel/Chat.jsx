@@ -56,10 +56,11 @@ function Chat() {
   const [speechSupported, setSpeechSupported] = useState(true);
   const [fileStatus, setFileStatus] = useState("");
   const [speaking, setSpeaking] = useState(false);
-const audioRef = useRef(null);
   const [viewMode, setViewMode] = useState("single");
+
   const recognitionRef = useRef(null);
   const speechBaseRef = useRef("");
+  const audioRef = useRef(null);
   const fileInputRef = useRef(null);
   const rkScrollRef = useRef(null);
   const plainScrollRef = useRef(null);
@@ -239,64 +240,79 @@ const audioRef = useRef(null);
   };
 
   const speakText = async (textToSpeak) => {
-  if (!textToSpeak || speaking) return;
+    if (!textToSpeak || speaking) return;
 
-  try {
-    setSpeaking(true);
+    try {
+      setSpeaking(true);
 
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
 
-    const res = await fetch(`${API}/tts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeader,
-      },
-      body: JSON.stringify({
-        text: textToSpeak,
-      }),
-    });
+      const res = await fetch(`${API}/tts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeader,
+        },
+        body: JSON.stringify({ text: textToSpeak }),
+      });
 
-    if (!res.ok) {
-      throw new Error("tts failed");
-    }
+      if (!res.ok) {
+        throw new Error("tts failed");
+      }
 
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
 
-    const audio = new Audio(url);
+      audioRef.current = audio;
 
-    audioRef.current = audio;
+      audio.onended = () => {
+        setSpeaking(false);
+        URL.revokeObjectURL(url);
+        audioRef.current = null;
+      };
 
-    audio.onended = () => {
+      audio.onerror = () => {
+        setSpeaking(false);
+        URL.revokeObjectURL(url);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error(err);
       setSpeaking(false);
-      URL.revokeObjectURL(url);
-      audioRef.current = null;
-    };
+    }
+  };
 
-    audio.onerror = () => {
-      setSpeaking(false);
-      URL.revokeObjectURL(url);
-      audioRef.current = null;
-    };
+  const renderAssistantBubble = (content) => (
+    <div className="assistant-wrap">
+      <div className={`bubble bubble-assistant ${assistantVisualClass}`}>
+        {content}
+      </div>
 
-    await audio.play();
+      <button
+        className="tts-btn"
+        onClick={() => speakText(content)}
+        disabled={speaking}
+        aria-label="play Brunel voice"
+        title="Play voice"
+      >
+        {speaking ? "Speaking..." : "🔊"}
+      </button>
+    </div>
+  );
 
-  } catch (err) {
-    console.error(err);
-    setSpeaking(false);
-  }
-};
   const renderPanelPairs = (kind) => (
     <div className="chat-body" ref={kind === "plain" ? plainScrollRef : rkScrollRef}>
       {pairs.length === 0 ? <div className="empty-state">waiting for prompt</div> : pairs.map((p, i) => (
         <div key={i} className="pair">
           {p.user && <div className="bubble bubble-user">{p.user}</div>}
           {kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}
-          {kind === "rk" && p.assistant && <div className={`bubble bubble-assistant ${assistantVisualClass}`}>{p.assistant}</div>}
+          {kind === "rk" && p.assistant && renderAssistantBubble(p.assistant)}
           {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
         </div>
       ))}
@@ -309,7 +325,7 @@ const audioRef = useRef(null);
       {pairs.length === 0 ? <div className="empty-state">say something — i'll remember it</div> : pairs.map((p, i) => (
         <div key={i} className="pair">
           {p.user && <div className="bubble bubble-user">{p.user}</div>}
-          {p.assistant && <div className={`bubble bubble-assistant ${assistantVisualClass}`}>{p.assistant}</div>}
+          {p.assistant && renderAssistantBubble(p.assistant)}
           {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
         </div>
       ))}
