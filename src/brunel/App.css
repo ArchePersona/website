@@ -305,3 +305,30 @@ button.send, button.mic-btn, button.file-btn { width: 38px; background: transpar
   opacity: 0.55;
   cursor: not-allowed;
 }
+
+.voice-btn {
+  border: 1px solid rgba(124, 255, 138, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  color: #9CFFB0;
+  min-width: 42px;
+  height: 42px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 10px rgba(124, 255, 138, 0.12);
+}
+
+.voice-btn.active {
+  border-color: #7CFF8A;
+  color: #D6FF7A;
+  box-shadow:
+    0 0 12px rgba(124, 255, 138, 0.35),
+    inset 0 0 8px rgba(124, 255, 138, 0.12);
+}
+
+.voice-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
