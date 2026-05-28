@@ -55,6 +55,8 @@ function Chat() {
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const [fileStatus, setFileStatus] = useState("");
+  const [speaking, setSpeaking] = useState(false);
+const audioRef = useRef(null);
   const [viewMode, setViewMode] = useState("single");
   const recognitionRef = useRef(null);
   const speechBaseRef = useRef("");
