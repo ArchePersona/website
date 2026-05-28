@@ -238,6 +238,58 @@ const audioRef = useRef(null);
     setTimeout(() => setCopiedKey(null), 1200);
   };
 
+  const speakText = async (textToSpeak) => {
+  if (!textToSpeak || speaking) return;
+
+  try {
+    setSpeaking(true);
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    const res = await fetch(`${API}/tts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeader,
+      },
+      body: JSON.stringify({
+        text: textToSpeak,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("tts failed");
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+
+    const audio = new Audio(url);
+
+    audioRef.current = audio;
+
+    audio.onended = () => {
+      setSpeaking(false);
+      URL.revokeObjectURL(url);
+      audioRef.current = null;
+    };
+
+    audio.onerror = () => {
+      setSpeaking(false);
+      URL.revokeObjectURL(url);
+      audioRef.current = null;
+    };
+
+    await audio.play();
+
+  } catch (err) {
+    console.error(err);
+    setSpeaking(false);
+  }
+};
   const renderPanelPairs = (kind) => (
     <div className="chat-body" ref={kind === "plain" ? plainScrollRef : rkScrollRef}>
       {pairs.length === 0 ? <div className="empty-state">waiting for prompt</div> : pairs.map((p, i) => (
