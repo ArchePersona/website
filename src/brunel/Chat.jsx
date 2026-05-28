@@ -46,7 +46,7 @@ function Chat() {
 
   const assistantVisualClass = [
     STATE_VISUALS[TEST_VISUAL_STATE]?.className || STATE_VISUALS.baseline.className,
-    MODE_VISUALS[TEST_VISUAL_MODE]?.className || MODE_VISUALS["000"].className,
+    MODE_VISUALS[TEST_VISUAL_MODE]?.className || MODE_VISUALS["011"].className,
   ].join(" ");
 
   const [messages, setMessages] = useState([]);
