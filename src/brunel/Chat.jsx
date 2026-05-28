@@ -42,11 +42,15 @@ function Chat() {
   const sessionId = user?.id || "";
   const isAdmin = (user?.email || "").toLowerCase() === "archepersona@gmail.com";
 
-  const assistantVisualClass = [
-    STATE_VISUALS[TEST_VISUAL_STATE]?.className || STATE_VISUALS.baseline.className,
-    MODE_VISUALS[TEST_VISUAL_MODE]?.className || MODE_VISUALS["011"].className,
-  ].join(" ");
+  const getAssistantVisualClass = (message) => {
+  const stateKey = message?.state || "baseline";
+  const modeKey = message?.mode || "011";
 
+  return [
+    STATE_VISUALS[stateKey]?.className || STATE_VISUALS.baseline.className,
+    MODE_VISUALS[modeKey]?.className || MODE_VISUALS["011"].className,
+  ].join(" ");
+};
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
   const [text, setText] = useState("");
