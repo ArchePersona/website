@@ -35,8 +35,6 @@ const MODE_VISUALS = {
   "911": { label: "Emergency", className: "mode-emergency" },
 };
 
-const TEST_VISUAL_STATE = "focused";
-const TEST_VISUAL_MODE = "711";
 
 function Chat() {
   const { user, session, signOut } = useAuth();
