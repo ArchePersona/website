@@ -3,6 +3,10 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Send, LogOut, Shield, ClipboardCopy, Mic, MicOff, Paperclip, Trash2, Volume2, VolumeX } from "lucide-react";
 import { useAuth } from "./AuthContext.jsx";
+import {
+  estimateRevealMs,
+  estimateTypingTickMs,
+} from "../utils/speechSync";
 import "./App.css";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://brunel-5lxo.onrender.com";
@@ -176,12 +180,6 @@ function Chat() {
     );
   };
 
-  const estimateRevealMs = (content) => {
-    const words = (content || "").trim().split(/\s+/).filter(Boolean).length;
-    const estimated = words * 360;
-    return Math.max(1800, Math.min(16000, estimated));
-  };
-
   const revealText = (messageId, fullText, durationMs) => {
     clearRevealTimer();
 
@@ -196,7 +194,7 @@ function Chat() {
     }
 
     const safeDuration = durationMs || estimateRevealMs(textToReveal);
-    const tickMs = 35;
+    const tickMs = estimateTypingTickMs(textToReveal);
     const steps = Math.max(1, Math.ceil(safeDuration / tickMs));
     const charsPerTick = Math.max(1, Math.ceil(totalChars / steps));
 
