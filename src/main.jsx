@@ -84,7 +84,7 @@ function BootTerminal() {
   );
 }
 
-function BridgeGraphic({ showMotto = false, ariaLabel = 'ARCHE bridge system' }) {
+function BridgeGraphic({ ariaLabel = 'ARCHE bridge system' }) {
   return (
     <svg viewBox="0 0 1200 900" className="bridge-svg" role="img" aria-label={ariaLabel}>
       <defs>
@@ -100,31 +100,53 @@ function BridgeGraphic({ showMotto = false, ariaLabel = 'ARCHE bridge system' })
       </defs>
 
       <g filter="url(#lineGlow)">
-        <path className="bridge-line" d="M120 96 H1080" />
-        {showMotto && (
-          <text className="bridge-motto" x="600" y="123" textAnchor="middle">
-            Building the bridge between humans and AI
-          </text>
-        )}
-        <path className="bridge-soft" d="M145 138 H1055" />
-        <path className="bridge-line" d="M170 330 Q600 64 1030 330" />
-        <path className="bridge-soft" d="M218 312 Q600 104 982 312" />
-        <path className="bridge-soft" d="M276 288 Q600 144 924 288" />
+        <path className="bridge-line bridge-deck-main" d="M132 138 H1068" />
+        <path className="bridge-soft bridge-deck-soft" d="M168 174 H1032" />
+
+        <g className="bridge-tower left-tower">
+          <path className="tower-line" d="M112 176 H222 L204 392 H132 Z" />
+          <path className="tower-soft" d="M132 212 H203" />
+          <path className="tower-soft" d="M126 250 H207" />
+          <path className="tower-soft" d="M122 290 H210" />
+          <path className="tower-soft" d="M119 330 H214" />
+          <path className="tower-line" d="M94 392 H246" />
+          <path className="tower-soft" d="M136 152 H198" />
+          <path className="tower-soft" d="M146 128 H188" />
+        </g>
+
+        <g className="bridge-tower right-tower">
+          <path className="tower-line" d="M978 176 H1088 L1068 392 H996 Z" />
+          <path className="tower-soft" d="M997 212 H1069" />
+          <path className="tower-soft" d="M993 250 H1074" />
+          <path className="tower-soft" d="M990 290 H1078" />
+          <path className="tower-soft" d="M986 330 H1081" />
+          <path className="tower-line" d="M954 392 H1106" />
+          <path className="tower-soft" d="M1002 152 H1064" />
+          <path className="tower-soft" d="M1012 128 H1054" />
+        </g>
+
+        <path className="bridge-line" d="M132 392 Q600 108 1068 392" />
+        <path className="bridge-soft" d="M174 374 Q600 148 1026 374" />
+        <path className="bridge-soft" d="M216 352 Q600 186 984 352" />
+
+        {Array.from({ length: 11 }).map((_, i) => {
+          const x = 224 + i * 56;
+          const y = 185 + Math.abs(i - 5) * 9;
+          return <path key={`spandrel-${i}`} className="spandrel-line" d={`M${x} 185 V${y + 72} Q${x + 28} ${y + 38} ${x + 56} ${y + 72} V185`} />;
+        })}
 
         <g>
-          <path className="pillar-rail" d="M188 176 V850" stroke="url(#pillarFade)" />
-          <path className="pillar-rail" d="M246 176 V850" stroke="url(#pillarFade)" />
-          {Array.from({ length: 8 }).map((_, i) => {
-            const y = 244 + i * 70;
-            return <g key={`left-pillar-${i}`}><line className="pillar-faint" x1="188" y1={y} x2="246" y2={y + 32} /><line className="pillar-faint" x1="246" y1={y + 32} x2="188" y2={y + 64} /></g>;
+          <path className="pillar-rail" d="M110 404 V850" stroke="url(#pillarFade)" />
+          {Array.from({ length: 6 }).map((_, i) => {
+            const y = 470 + i * 58;
+            return <g key={`left-hanger-${i}`}><line className="pillar-faint" x1="110" y1={y} x2="152" y2={y + 30} /><line className="pillar-faint" x1="152" y1={y + 30} x2="110" y2={y + 60} /></g>;
           })}
         </g>
         <g>
-          <path className="pillar-rail" d="M954 176 V850" stroke="url(#pillarFade)" />
-          <path className="pillar-rail" d="M1012 176 V850" stroke="url(#pillarFade)" />
-          {Array.from({ length: 8 }).map((_, i) => {
-            const y = 244 + i * 70;
-            return <g key={`right-pillar-${i}`}><line className="pillar-faint" x1="954" y1={y} x2="1012" y2={y + 32} /><line className="pillar-faint" x1="1012" y1={y + 32} x2="954" y2={y + 64} /></g>;
+          <path className="pillar-rail" d="M1090 404 V850" stroke="url(#pillarFade)" />
+          {Array.from({ length: 6 }).map((_, i) => {
+            const y = 470 + i * 58;
+            return <g key={`right-hanger-${i}`}><line className="pillar-faint" x1="1090" y1={y} x2="1048" y2={y + 30} /><line className="pillar-faint" x1="1048" y1={y + 30} x2="1090" y2={y + 60} /></g>;
           })}
         </g>
       </g>
@@ -147,18 +169,23 @@ function LandingPage() {
 
           <section className="bridge-section hero-bridge" aria-label="Brunel bridge">
             <div className="bridge-wrap">
-              <BridgeGraphic showMotto ariaLabel="Brunel bridge between humans and AI" />
-
-              <section className="brunel-intro">
-                <div className="trust-copy">
-                  <p>Trust is built through contact and time.</p>
-                  <p>And these days, trust is hard to find.</p>
-                  <p>Most AI starts over every time you come back.<br />And everybody knows that ain&rsquo;t . . . right?!</p>
-                  <p>So we built one that remembers what matters.<br /><span>And what matters is you.</span></p>
-                </div>
-                <a href="/brunel/disclaimer" className="primary-button">Launch Brunel</a>
-              </section>
+              <BridgeGraphic ariaLabel="Brunel bridge between humans and AI" />
+              <div className="bridge-motto" aria-label="Building the bridge between humans and AI">
+                <span></span>
+                <strong>Building the bridge between<br className="mobile-break" /> humans and AI</strong>
+                <span></span>
+              </div>
             </div>
+          </section>
+
+          <section className="brunel-intro">
+            <div className="trust-copy">
+              <p>Trust is built through contact and time.</p>
+              <p>And these days, trust is hard to find.</p>
+              <p>Most AI starts over every time you come back.<br />And everybody knows that ain&rsquo;t . . . right?!</p>
+              <p>So we built one that remembers what matters.<br /><span>And what matters is you.</span></p>
+            </div>
+            <a href="/brunel/disclaimer" className="primary-button">Launch Brunel</a>
           </section>
         </section>
 
