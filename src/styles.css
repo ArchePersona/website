@@ -30,8 +30,10 @@ h1, h2, p { margin-top: 0; }
 .launch-link { font-family: Orbitron, system-ui, sans-serif; font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: rgba(226,198,153,.82); border: 1px solid rgba(218,181,123,.24); padding: .65rem .95rem; background: rgba(218,181,123,.04); }
 
 .hero { position: relative; z-index: 2; min-height: calc(100vh - 88px); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: clamp(3.1rem, 7vw, 5rem) 1.25rem 4.2rem; text-align: center; }
+.brunel-hero { min-height: auto; padding-bottom: 1.5rem; }
 .present-line { font-family: Orbitron, system-ui, sans-serif; font-size: clamp(.56rem, 1.05vw, .82rem); font-weight: 500; letter-spacing: .42em; text-transform: uppercase; color: rgba(218,181,123,.72); }
-.arche-title { margin: 1.55rem 0 0; font-family: Audiowide, Orbitron, system-ui, sans-serif; font-weight: 400; letter-spacing: .055em; transform: scaleX(1.02); transform-origin: center bottom; font-size: clamp(5.2rem, 14vw, 12.5rem); line-height: .78; color: rgba(221,198,161,.96); text-shadow: 0 0 26px rgba(91,203,149,.22), 0 18px 42px rgba(0,0,0,.44); user-select: none; }
+.arche-title, .brunel-title { margin: 1.55rem 0 0; font-family: Audiowide, Orbitron, system-ui, sans-serif; font-weight: 400; letter-spacing: .055em; transform: scaleX(1.02); transform-origin: center bottom; font-size: clamp(5.2rem, 14vw, 12.5rem); line-height: .78; color: rgba(221,198,161,.96); text-shadow: 0 0 26px rgba(91,203,149,.22), 0 18px 42px rgba(0,0,0,.44); user-select: none; }
+.brunel-title { margin-top: 1.05rem; font-size: clamp(4.8rem, 13vw, 11.5rem); }
 .acronym-line { width: min(93vw, 1250px); margin: .42rem auto 0; display: block; font-family: Orbitron, system-ui, sans-serif; font-size: clamp(.44rem, .7vw, .61rem); letter-spacing: clamp(.42em, 1.12vw, 1.24em); text-align: center; white-space: nowrap; text-transform: uppercase; color: rgba(218,181,123,.50); }
 .slogan-stack { margin-top: 2.55rem; font-family: Orbitron, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .22em; }
 .slogan-primary { font-size: clamp(.78rem, 1.45vw, 1.05rem); color: rgba(226,198,153,.94); }
@@ -42,13 +44,30 @@ h1, h2, p { margin-top: 0; }
 .primary-button { margin-top: 2.1rem; display: inline-flex; font-family: Orbitron, system-ui, sans-serif; font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; border: 1px solid rgba(218,181,123,.38); padding: .82rem 1.15rem; background: rgba(218,181,123,.08); color: rgba(226,198,153,.94); }
 
 .bridge-section { position: relative; z-index: 2; margin: -2.2rem auto 0; width: min(1120px, 100%); padding: 0 1.25rem 2rem; }
+.hero-bridge { margin-top: .75rem; width: min(1180px, 100%); padding-bottom: 0; }
 .bridge-wrap { position: relative; width: 100%; }
-.bridge-svg { position: relative; z-index: 2; width: 100%; height: auto; overflow: visible; }
+.bridge-svg { position: relative; z-index: 2; width: 100%; height: auto; overflow: visible; display: block; }
+.hero-bridge .bridge-svg { margin-top: -1.2rem; }
 .bridge-line { stroke: var(--bronze); stroke-width: 2; fill: none; vector-effect: non-scaling-stroke; }
 .bridge-soft { stroke: var(--bronze-soft); stroke-width: 1.14; fill: none; vector-effect: non-scaling-stroke; }
+.bridge-motto { font-family: Orbitron, system-ui, sans-serif; font-size: 22px; font-weight: 700; letter-spacing: .26em; text-transform: uppercase; fill: rgba(226,198,153,.9); text-shadow: 0 0 12px rgba(26,220,142,.18), 0 0 18px rgba(218,181,123,.18); }
 .pillar-faint { stroke: rgba(218,181,123,.2); stroke-width: 1; fill: none; vector-effect: non-scaling-stroke; }
 .pillar-rail { stroke-width: 1.35; fill: none; vector-effect: non-scaling-stroke; }
 
+.brunel-intro { position: absolute; z-index: 3; left: 50%; top: 39%; width: min(780px, 78vw); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; text-align: center; }
+.trust-copy { width: 100%; max-width: 760px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: rgba(226,198,153,.9); text-shadow: 0 0 10px rgba(26,220,142,.08); font-size: clamp(1rem, 2.05vw, 1.8rem); line-height: 1.45; letter-spacing: .04em; }
+.trust-copy p { margin: 0 0 1.45rem; }
+.trust-copy span { color: rgba(235,211,174,.98); }
+
+.qa-section { position: relative; z-index: 3; width: min(860px, 92vw); margin: 2rem auto 3rem; padding: clamp(2rem, 5vw, 4rem) 1.25rem; display: grid; gap: clamp(2rem, 5vw, 3.6rem); text-align: center; }
+.qa-block { border-top: 1px solid rgba(218,181,123,.22); padding-top: clamp(1.35rem, 3vw, 2.2rem); }
+.qa-kicker { margin-bottom: .9rem; font-family: Orbitron, system-ui, sans-serif; font-size: clamp(.58rem, 1vw, .78rem); letter-spacing: .22em; text-transform: uppercase; color: rgba(150,183,174,.6); }
+.qa-block h2 { margin: 0 0 .75rem; font-family: Orbitron, system-ui, sans-serif; font-size: clamp(1.1rem, 2.4vw, 2rem); letter-spacing: .12em; text-transform: uppercase; color: rgba(226,198,153,.95); }
+.qa-block p { margin: 0; font-family: Inter, system-ui, sans-serif; font-size: clamp(1rem, 1.7vw, 1.28rem); line-height: 1.65; color: rgba(210,224,218,.78); }
+
+.arche-engine-section { min-height: auto; padding-top: clamp(4rem, 8vw, 7rem); padding-bottom: clamp(4rem, 8vw, 7rem); border-top: 1px solid rgba(218,181,123,.12); }
+
+.persona-bridge { margin-top: 1rem; }
 .persona-section { position: absolute; z-index: 3; left: 50%; top: 28%; width: min(600px, 66vw); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; text-align: center; }
 .persona-title { font-family: Orbitron, system-ui, sans-serif; font-size: clamp(.72rem, 1.35vw, .96rem); font-weight: 700; letter-spacing: .21em; color: rgba(223,190,133,.88); }
 .persona-subtitle { margin-top: .9rem; font-family: Orbitron, system-ui, sans-serif; font-size: clamp(.48rem, .82vw, .6rem); line-height: 1.75; letter-spacing: .12em; text-transform: uppercase; color: rgba(154,187,177,.58); }
@@ -78,14 +97,32 @@ h1, h2, p { margin-top: 0; }
   .site-header { height: 82px; padding: 0 12px; }
   .company-wordmark { font-size: .78rem; }
   .launch-link { font-size: .58rem; padding: .55rem .75rem; }
-  .hero { min-height: calc(100vh - 82px); padding-top: 3.3rem; }
+  .hero { min-height: auto; padding: 3.3rem 1rem 3.2rem; }
+  .brunel-hero { padding-top: 5.4rem; padding-bottom: .5rem; }
   .present-line { letter-spacing: .28em; }
-  .arche-title { transform: scaleX(1); letter-spacing: .032em; font-size: clamp(3.8rem, 17vw, 6.4rem); }
+  .arche-title, .brunel-title { transform: scaleX(1); letter-spacing: .032em; font-size: clamp(3.55rem, 16vw, 6.2rem); }
+  .brunel-title { margin-top: .85rem; font-size: clamp(3.9rem, 17vw, 6.6rem); }
   .acronym-line { width: min(92vw, 680px); margin-top: .5rem; font-size: clamp(.42rem, 1.35vw, .58rem); letter-spacing: clamp(.08em, .28vw, .22em); white-space: normal; line-height: 1.8; }
   .slogan-stack { letter-spacing: .14em; }
   .bridge-section { width: 118vw; margin-left: -9vw; }
+  .hero-bridge { width: 150vw; margin-top: -.1rem; margin-left: -25vw; padding-left: 0; padding-right: 0; }
+  .hero-bridge .bridge-svg { margin-top: -1.05rem; }
+  .bridge-motto { font-size: 28px; letter-spacing: .18em; }
+  .brunel-intro { top: 37%; width: min(340px, 78vw); }
+  .trust-copy { max-width: 340px; font-size: clamp(1rem, 4.8vw, 1.28rem); line-height: 1.38; letter-spacing: .015em; }
+  .trust-copy p { margin-bottom: 1.2rem; }
+  .trust-copy br { display: none; }
+  .primary-button { margin-top: 1.3rem; }
+  .qa-section { margin-top: 1rem; width: min(360px, 92vw); padding-top: 2.4rem; }
   .persona-section { top: 28%; width: min(500px, 64vw); }
   .persona-list { margin-top: 2.1rem; gap: 1.15rem; }
   .basement-panel { min-height: 360px; }
   .terminal-card { font-size: .78rem; }
+}
+
+@media (max-width: 420px) {
+  .hero-bridge { width: 165vw; margin-left: -32.5vw; }
+  .bridge-motto { font-size: 31px; letter-spacing: .15em; }
+  .brunel-intro { top: 38%; width: min(330px, 80vw); }
+  .trust-copy { max-width: 330px; font-size: clamp(.96rem, 4.65vw, 1.16rem); }
 }
