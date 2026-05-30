@@ -102,39 +102,9 @@ function BridgeGraphic({ ariaLabel = 'ARCHE bridge system' }) {
       <g filter="url(#lineGlow)">
         <path className="bridge-line bridge-deck-main" d="M132 138 H1068" />
         <path className="bridge-soft bridge-deck-soft" d="M168 174 H1032" />
-
-        <g className="bridge-tower left-tower">
-          <path className="tower-line" d="M112 176 H222 L204 392 H132 Z" />
-          <path className="tower-soft" d="M132 212 H203" />
-          <path className="tower-soft" d="M126 250 H207" />
-          <path className="tower-soft" d="M122 290 H210" />
-          <path className="tower-soft" d="M119 330 H214" />
-          <path className="tower-line" d="M94 392 H246" />
-          <path className="tower-soft" d="M136 152 H198" />
-          <path className="tower-soft" d="M146 128 H188" />
-        </g>
-
-        <g className="bridge-tower right-tower">
-          <path className="tower-line" d="M978 176 H1088 L1068 392 H996 Z" />
-          <path className="tower-soft" d="M997 212 H1069" />
-          <path className="tower-soft" d="M993 250 H1074" />
-          <path className="tower-soft" d="M990 290 H1078" />
-          <path className="tower-soft" d="M986 330 H1081" />
-          <path className="tower-line" d="M954 392 H1106" />
-          <path className="tower-soft" d="M1002 152 H1064" />
-          <path className="tower-soft" d="M1012 128 H1054" />
-        </g>
-
         <path className="bridge-line" d="M132 392 Q600 108 1068 392" />
         <path className="bridge-soft" d="M174 374 Q600 148 1026 374" />
         <path className="bridge-soft" d="M216 352 Q600 186 984 352" />
-
-        {Array.from({ length: 11 }).map((_, i) => {
-          const x = 224 + i * 56;
-          const y = 185 + Math.abs(i - 5) * 9;
-          return <path key={`spandrel-${i}`} className="spandrel-line" d={`M${x} 185 V${y + 72} Q${x + 28} ${y + 38} ${x + 56} ${y + 72} V185`} />;
-        })}
-
         <g>
           <path className="pillar-rail" d="M110 404 V850" stroke="url(#pillarFade)" />
           {Array.from({ length: 6 }).map((_, i) => {
@@ -164,19 +134,11 @@ function LandingPage() {
         </header>
 
         <section className="hero brunel-hero" aria-label="BRUNEL hero">
-          <div className="present-line">ArchePersona Presents</div>
-          <h1 className="brunel-title">BRUNEL</h1>
-
-          <section className="bridge-section hero-bridge" aria-label="Brunel bridge">
-            <div className="bridge-wrap">
-              <BridgeGraphic ariaLabel="Brunel bridge between humans and AI" />
-              <div className="bridge-motto" aria-label="Building the bridge between humans and AI">
-                <span></span>
-                <strong>Building the bridge between<br className="mobile-break" /> humans and AI</strong>
-                <span></span>
-              </div>
-            </div>
-          </section>
+          <img
+            src="/images/file_00000000947c720c8056c2feeeac6d4f.png"
+            alt="Brunel — Building the bridge between humans and AI"
+            className="brunel-crest"
+          />
 
           <section className="brunel-intro">
             <div className="trust-copy">
