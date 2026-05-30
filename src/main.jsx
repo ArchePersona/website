@@ -84,6 +84,54 @@ function BootTerminal() {
   );
 }
 
+function BridgeGraphic({ showMotto = false, ariaLabel = 'ARCHE bridge system' }) {
+  return (
+    <svg viewBox="0 0 1200 900" className="bridge-svg" role="img" aria-label={ariaLabel}>
+      <defs>
+        <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="1.8" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <linearGradient id="pillarFade" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="rgba(218,181,123,0.44)" />
+          <stop offset="66%" stopColor="rgba(218,181,123,0.23)" />
+          <stop offset="100%" stopColor="rgba(72,174,112,0.01)" />
+        </linearGradient>
+      </defs>
+
+      <g filter="url(#lineGlow)">
+        <path className="bridge-line" d="M120 96 H1080" />
+        {showMotto && (
+          <text className="bridge-motto" x="600" y="123" textAnchor="middle">
+            Building the bridge between humans and AI
+          </text>
+        )}
+        <path className="bridge-soft" d="M145 138 H1055" />
+        <path className="bridge-line" d="M170 330 Q600 64 1030 330" />
+        <path className="bridge-soft" d="M218 312 Q600 104 982 312" />
+        <path className="bridge-soft" d="M276 288 Q600 144 924 288" />
+
+        <g>
+          <path className="pillar-rail" d="M188 176 V850" stroke="url(#pillarFade)" />
+          <path className="pillar-rail" d="M246 176 V850" stroke="url(#pillarFade)" />
+          {Array.from({ length: 8 }).map((_, i) => {
+            const y = 244 + i * 70;
+            return <g key={`left-pillar-${i}`}><line className="pillar-faint" x1="188" y1={y} x2="246" y2={y + 32} /><line className="pillar-faint" x1="246" y1={y + 32} x2="188" y2={y + 64} /></g>;
+          })}
+        </g>
+        <g>
+          <path className="pillar-rail" d="M954 176 V850" stroke="url(#pillarFade)" />
+          <path className="pillar-rail" d="M1012 176 V850" stroke="url(#pillarFade)" />
+          {Array.from({ length: 8 }).map((_, i) => {
+            const y = 244 + i * 70;
+            return <g key={`right-pillar-${i}`}><line className="pillar-faint" x1="954" y1={y} x2="1012" y2={y + 32} /><line className="pillar-faint" x1="1012" y1={y + 32} x2="954" y2={y + 64} /></g>;
+          })}
+        </g>
+      </g>
+    </svg>
+  );
+}
+
 function LandingPage() {
   return (
     <main className="arche-page">
@@ -93,9 +141,48 @@ function LandingPage() {
           <a href="/brunel/disclaimer" className="launch-link">Launch Brunel</a>
         </header>
 
-        <section className="hero" aria-label="ARCHE hero">
-          <div className="present-line">Proudly Presents</div>
-          <h1 className="arche-title">ARCHE</h1>
+        <section className="hero brunel-hero" aria-label="BRUNEL hero">
+          <div className="present-line">ArchePersona Presents</div>
+          <h1 className="brunel-title">BRUNEL</h1>
+
+          <section className="bridge-section hero-bridge" aria-label="Brunel bridge">
+            <div className="bridge-wrap">
+              <BridgeGraphic showMotto ariaLabel="Brunel bridge between humans and AI" />
+
+              <section className="brunel-intro">
+                <div className="trust-copy">
+                  <p>Trust is built through contact and time.</p>
+                  <p>And these days, trust is hard to find.</p>
+                  <p>Most AI starts over every time you come back.<br />And everybody knows that ain&rsquo;t . . . right?!</p>
+                  <p>So we built one that remembers what matters.<br /><span>And what matters is you.</span></p>
+                </div>
+                <a href="/brunel/disclaimer" className="primary-button">Launch Brunel</a>
+              </section>
+            </div>
+          </section>
+        </section>
+
+        <section className="qa-section" aria-label="Brunel questions">
+          <div className="qa-block">
+            <div className="qa-kicker">A lot of people ask:</div>
+            <h2>Is Brunel real?</h2>
+            <p>He&rsquo;s real enough to matter.</p>
+          </div>
+
+          <div className="qa-block">
+            <h2>How does that happen?</h2>
+            <p>He emerges. He does not perform.</p>
+          </div>
+
+          <div className="qa-block">
+            <h2>What does that mean?</h2>
+            <p>Brunel is not acting from a character sheet.<br />He is shaped by the user&rsquo;s unique interactions.</p>
+          </div>
+        </section>
+
+        <section className="hero arche-engine-section" aria-label="ARCHEngine section">
+          <div className="present-line">Powered by</div>
+          <h2 className="arche-title">ARCHEngine</h2>
           <div className="acronym-line">Adaptive Relational Cognitive Human Emulator</div>
 
           <div className="slogan-stack">
@@ -104,54 +191,15 @@ function LandingPage() {
             <div className="slogan-tertiary">Built to last. Built to matter.</div>
             <div className="signature">Unforgettably. Yours.</div>
           </div>
-
-          <a href="/brunel/disclaimer" className="primary-button">Launch Brunel</a>
         </section>
 
-        <section className="bridge-section" aria-label="RKe persona infrastructure">
+        <section className="bridge-section persona-bridge" aria-label="RKe persona infrastructure">
           <div className="bridge-wrap">
-            <svg viewBox="0 0 1200 900" className="bridge-svg" role="img" aria-label="ARCHE bridge system">
-              <defs>
-                <filter id="lineGlow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="1.8" result="blur" />
-                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
-                <linearGradient id="pillarFade" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgba(218,181,123,0.44)" />
-                  <stop offset="66%" stopColor="rgba(218,181,123,0.23)" />
-                  <stop offset="100%" stopColor="rgba(72,174,112,0.01)" />
-                </linearGradient>
-              </defs>
-
-              <g filter="url(#lineGlow)">
-                <path className="bridge-line" d="M120 96 H1080" />
-                <path className="bridge-soft" d="M145 138 H1055" />
-                <path className="bridge-line" d="M170 330 Q600 64 1030 330" />
-                <path className="bridge-soft" d="M218 312 Q600 104 982 312" />
-                <path className="bridge-soft" d="M276 288 Q600 144 924 288" />
-
-                <g>
-                  <path className="pillar-rail" d="M188 176 V850" stroke="url(#pillarFade)" />
-                  <path className="pillar-rail" d="M246 176 V850" stroke="url(#pillarFade)" />
-                  {Array.from({ length: 8 }).map((_, i) => {
-                    const y = 244 + i * 70;
-                    return <g key={`left-pillar-${i}`}><line className="pillar-faint" x1="188" y1={y} x2="246" y2={y + 32} /><line className="pillar-faint" x1="246" y1={y + 32} x2="188" y2={y + 64} /></g>;
-                  })}
-                </g>
-                <g>
-                  <path className="pillar-rail" d="M954 176 V850" stroke="url(#pillarFade)" />
-                  <path className="pillar-rail" d="M1012 176 V850" stroke="url(#pillarFade)" />
-                  {Array.from({ length: 8 }).map((_, i) => {
-                    const y = 244 + i * 70;
-                    return <g key={`right-pillar-${i}`}><line className="pillar-faint" x1="954" y1={y} x2="1012" y2={y + 32} /><line className="pillar-faint" x1="1012" y1={y + 32} x2="954" y2={y + 64} /></g>;
-                  })}
-                </g>
-              </g>
-            </svg>
+            <BridgeGraphic ariaLabel="RKe persona bridge system" />
 
             <section className="persona-section">
               <div className="persona-title">THE RKe PERSONA FAMILY</div>
-              <div className="persona-subtitle">Runtime personalities built on the ARCHE engine</div>
+              <div className="persona-subtitle">Runtime personalities built on the ARCHEngine</div>
               <div className="persona-list">
                 {personas.map(([name, desc], index) => (
                   <div key={name} className={`persona-card depth-${index}`}>
