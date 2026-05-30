@@ -10,8 +10,10 @@ export const estimateRevealMs = (content) => {
 
 export const estimateTypingTickMs = (content) => {
   const chars = String(content || "").length;
-  if (chars < 80) return 50;
-if (chars < 220) return 58;
-if (chars < 500) return 66;
 
-return 74;
+  if (chars < 80) return 50;
+  if (chars < 220) return 58;
+  if (chars < 500) return 66;
+
+  return 74;
+};
