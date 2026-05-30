@@ -1,6 +1,6 @@
-const MIN_REVEAL_MS = 2400;
-const MAX_REVEAL_MS = 30000;
-const MS_PER_WORD = 520;
+const MIN_REVEAL_MS = 2800;
+const MAX_REVEAL_MS = 36000;
+const MS_PER_WORD = 620;
 
 export const estimateRevealMs = (content) => {
   const words = String(content || "").trim().split(/\s+/).filter(Boolean).length;
@@ -10,8 +10,8 @@ export const estimateRevealMs = (content) => {
 
 export const estimateTypingTickMs = (content) => {
   const chars = String(content || "").length;
-  if (chars < 80) return 42;
-  if (chars < 220) return 48;
-  if (chars < 500) return 54;
-  return 60;
-};
+  if (chars < 80) return 50;
+if (chars < 220) return 58;
+if (chars < 500) return 66;
+
+return 74;
