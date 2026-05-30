@@ -200,7 +200,7 @@ function Chat() {
     }
 
     const safeDuration = durationMs || estimateRevealMs(textToReveal);
-    const tickMs = 35;
+    const tickMs = estimateTypingTickMs(textToReveal);
     const steps = Math.max(1, Math.ceil(safeDuration / tickMs));
     const charsPerTick = Math.max(1, Math.ceil(totalChars / steps));
 
