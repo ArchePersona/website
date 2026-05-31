@@ -1,0 +1,9 @@
+@media (max-width: 760px){
+  .brunel-crest{
+    width: 100vw;
+    max-width: none;
+    margin-left: 50%;
+    margin-right: 0;
+    transform: translateX(-50%);
+  }
+}
