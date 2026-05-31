@@ -183,7 +183,7 @@ padding:clamp(1.8rem,4.5vw,3.6rem) 0 clamp(2.25rem,4.5vw,4.2rem);
 display:flex;
 flex-direction:column;
 align-items:center;
-gap:clamp(1.35rem,2.6vw,2.15rem);
+gap:clamp(1rem,2vw,1.6rem);
 text-align:center
 }
 
@@ -216,26 +216,26 @@ color:rgba(154,196,188,.58)
 }
 
 .qa-block h2{
-margin:0 0 .36rem;
+margin:0 0 .32rem;
 font-family:Audiowide,Orbitron,system-ui,sans-serif;
-font-size:clamp(.92rem,2.15vw,1.55rem);
+font-size:clamp(.78rem,1.45vw,1.08rem);
 font-weight:400;
-letter-spacing:.08em;
+letter-spacing:.05em;
 line-height:1.18;
 text-transform:uppercase;
 color:var(--blueprint);
-text-shadow:0 0 14px rgba(154,196,188,.12)
+text-shadow:0 0 10px rgba(154,196,188,.1)
 }
 
 .qa-block p{
 margin:0;
 font-family:'EB Garamond',Georgia,serif;
-font-size:clamp(1.05rem,2.05vw,1.55rem);
+font-size:clamp(.92rem,1.55vw,1.18rem);
 font-weight:500;
 line-height:1.2;
 letter-spacing:.025em;
 color:rgba(226,198,153,.9);
-text-shadow:0 0 14px rgba(218,181,123,.08)
+text-shadow:0 0 12px rgba(218,181,123,.07)
 }
 
 .arche-engine-section{
