@@ -141,11 +141,11 @@ function LandingPage() {
           />
 
           <section className="brunel-intro">
-            <div className="trust-copy">
-              <p>Trust is built through contact and time.</p>
-              <p>And these days, trust is hard to find.</p>
-              <p>Most AI starts over every time you come back.<br />And everybody knows that ain&rsquo;t . . . right?!</p>
-              <p>So we built one that remembers what matters.<br /><span>And what matters is you.</span></p>
+            <p className="bridge-tagline">Building the bridge between humans and AI.</p>
+            <div className="asi-category" aria-label="Artificial Social Intelligence">
+              <span className="asi-bronze">ARTIFICIAL</span>{' '}
+              <span className="social">SOCIAL</span>{' '}
+              <span className="asi-bronze">INTELLIGENCE</span>
             </div>
             <a href="/brunel/disclaimer" className="primary-button">Launch Brunel</a>
           </section>
