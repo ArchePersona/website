@@ -476,6 +476,10 @@ font-size:.58rem
 padding-top:.25rem
 }
 
+.brunel-crest{
+transform:translateX(-12px)
+}
+
 .qa-section{
 width:min(560px,90vw);
 padding-top:2rem
