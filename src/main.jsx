@@ -176,7 +176,6 @@ function LandingPage() {
 
           <div className="slogan-stack">
             <div className="slogan-primary">Artificial <span className="social">Social</span> Intelligence.</div>
-            <div className="slogan-secondary">AI is horsepower. ARCHE is traction control.</div>
             <div className="slogan-tertiary">Built to last. Built to matter.</div>
             <div className="signature">Unforgettably. Yours.</div>
           </div>
