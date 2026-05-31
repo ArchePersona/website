@@ -141,7 +141,6 @@ function LandingPage() {
           />
 
           <section className="brunel-intro">
-            <p className="bridge-tagline">Building the bridge between humans and AI.</p>
             <div className="asi-category" aria-label="Artificial Social Intelligence">
               <span className="asi-bronze">ARTIFICIAL</span>{' '}
               <span className="social">SOCIAL</span>{' '}
