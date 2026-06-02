@@ -141,9 +141,9 @@ function LandingPage() {
           />
 
           <section className="brunel-intro">
-            <div className="asi-category" aria-label="Artificial Social Intelligence">
+            <div className="asi-category" aria-label="Artificial Behavioral Intelligence">
               <span className="asi-bronze">ARTIFICIAL</span>{' '}
-              <span className="social">SOCIAL</span>{' '}
+              <span className="social">BEHAVIORAL</span>{' '}
               <span className="asi-bronze">INTELLIGENCE</span>
             </div>
             <a href="/brunel/disclaimer" className="primary-button">Launch Brunel</a>
@@ -174,7 +174,7 @@ function LandingPage() {
           <div className="acronym-line">Adaptive Relational Cognitive Human Emulator</div>
 
           <div className="slogan-stack">
-            <div className="slogan-primary">Artificial <span className="social">Social</span> Intelligence.</div>
+            <div className="slogan-primary">Artificial <span className="social">Behavioral</span> Intelligence.</div>
             <div className="slogan-tertiary">Built to last. Built to matter.</div>
             <div className="signature">Unforgettably. Yours.</div>
           </div>
