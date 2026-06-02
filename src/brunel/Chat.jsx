@@ -569,7 +569,7 @@ function Chat() {
       <div className="topbar">
         <div className="brand">
           <div className="brand-name">BRUNEL</div>
-          <div className="brand-sub">Powered by ARCHE</div>
+          <div className="brand-sub">Powered by ARCHEngine</div>
         </div>
 
         <div className="topbar-right">
@@ -604,8 +604,8 @@ function Chat() {
         <div className={doubleMode ? "panel panel-rk" : "panel panel-rk solo"}>
           {doubleMode && (
             <div className="panel-title panel-title-rk">
-              <div className="main-title"><span>BRUNEL</span><span className="powered">Powered by ARCHE</span></div>
-              <div className="sub-title">Artificial Social Intelligence</div>
+              <div className="main-title"><span>BRUNEL</span><span className="powered">Powered by ARCHEngine</span></div>
+              <div className="sub-title">Artificial Behavioral Intelligence</div>
             </div>
           )}
 
