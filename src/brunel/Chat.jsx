@@ -65,6 +65,7 @@ function Chat() {
   const [speaking, setSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [viewMode, setViewMode] = useState("single");
+  const [selectedModel, setSelectedModel] = useState("cheap");
 
   const recognitionRef = useRef(null);
   const speechBaseRef = useRef("");
@@ -401,7 +402,7 @@ function Chat() {
     try {
       const r = await axios.post(
         `${API}/chat`,
-        { message: msg, target: requestDouble ? "both" : "rk_only" },
+        { message: msg, target: requestDouble ? "both" : "rk_only", model: selectedModel },
         { headers: authHeader, timeout: 45000 }
       );
 
@@ -654,6 +655,22 @@ function Chat() {
           >
             {speaking ? "◼" : <Volume2 size={14} />}
           </button>
+
+
+          <select
+            className="model-select"
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            disabled={sending}
+            aria-label="select runtime model"
+            title="Runtime model"
+          >
+            <option value="cheap">Cheap</option>
+            <option value="smart">Smart</option>
+            <option value="gemini">Gemini</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="qwen">Qwen</option>
+          </select>
 
           <textarea
             className="input"
