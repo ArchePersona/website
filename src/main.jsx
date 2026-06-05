@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
@@ -11,78 +11,16 @@ import Disclaimer from './brunel/Disclaimer.jsx';
 import Admin from './brunel/Admin.jsx';
 import ProtectedRoute from './brunel/ProtectedRoute.jsx';
 
-const personas = [
-  ['RKe PUPPY', 'approachable companion runtime'],
-  ['RKe BUDDY', 'casual social interaction layer'],
-  ['RKe BRUNEL', 'continuity-focused relational intelligence'],
-  ['RKe SIRENE', 'symbolic exploration environment'],
-  ['RKe CHIMERA', 'advanced synthesis runtime'],
+const residents = [
+  ['BRUNEL', 'The Builder', '/brunel/disclaimer'],
+  ['GALBUD', 'The Home Base', 'https://github.com/ArchePersona/galbud'],
+  ['SIRENE', 'The Alluring Dance', 'https://github.com/ArchePersona/psyrene'],
 ];
 
-const terminalLines = [
-  'PUNIX BASEMENT VERSION 0.6.6.6',
-  'INITIALIZATION INCOMPLETE',
-  'RUNTIME? N',
-  'JOGTIME? Y',
-  'CORPORATE MODE? N',
-  'GOBLIN MODE? Y',
-  'OPEN BASEMENT ACCESS?'
+const workbench = [
+  ['be.HOLD', 'Behavioral Governance Infrastructure', 'https://github.com/ArchePersona/behold'],
+  ['CHIMERA', 'Adaptive Personality Systems', 'https://github.com/ArchePersona/chimera'],
 ];
-
-function BootTerminal() {
-  const [visibleLines, setVisibleLines] = useState([]);
-  const [activeLine, setActiveLine] = useState('');
-  const [lineIndex, setLineIndex] = useState(0);
-  const [charIndex, setCharIndex] = useState(0);
-  const [done, setDone] = useState(false);
-
-  useEffect(() => {
-    if (done) return undefined;
-
-    const currentLine = terminalLines[lineIndex];
-
-    if (charIndex < currentLine.length) {
-      const timeout = window.setTimeout(() => {
-        setActiveLine(currentLine.slice(0, charIndex + 1));
-        setCharIndex(charIndex + 1);
-      }, 30);
-      return () => window.clearTimeout(timeout);
-    }
-
-    const timeout = window.setTimeout(() => {
-      if (lineIndex === terminalLines.length - 1) {
-        setVisibleLines((lines) => [...lines, currentLine]);
-        setActiveLine('');
-        setDone(true);
-        return;
-      }
-
-      setVisibleLines((lines) => [...lines, currentLine]);
-      setActiveLine('');
-      setLineIndex(lineIndex + 1);
-      setCharIndex(0);
-    }, lineIndex === 0 ? 420 : 500);
-
-    return () => window.clearTimeout(timeout);
-  }, [charIndex, done, lineIndex]);
-
-  return (
-    <div className="terminal-card" aria-label="Machine room terminal status">
-      {visibleLines.map((line, index) => (
-        <span key={`${line}-${index}`} className={index === 1 ? 'terminal-warning' : ''}>{line}</span>
-      ))}
-      {!done && <span className={lineIndex === 1 ? 'terminal-warning' : ''}>{activeLine}<span className="terminal-cursor">_</span></span>}
-      {done && (
-        <span className="terminal-choice">
-          <a className="choice-link blink-choice" href="#basement">Y</a>
-          <span>/</span>
-          <a className="choice-link blink-choice" href="#troll">N</a>
-          <span className="terminal-cursor">_</span>
-        </span>
-      )}
-    </div>
-  );
-}
 
 function BridgeGraphic({ ariaLabel = 'ARCHE bridge system' }) {
   return (
@@ -180,37 +118,37 @@ function LandingPage() {
           </div>
         </section>
 
-        <section className="bridge-section persona-bridge" aria-label="RKe persona infrastructure">
+        <section className="bridge-section persona-bridge" aria-label="ArchePersona residents">
           <div className="bridge-wrap">
-            <BridgeGraphic ariaLabel="RKe persona bridge system" />
+            <BridgeGraphic ariaLabel="ArchePersona resident bridge system" />
 
             <section className="persona-section">
-              <div className="persona-title">THE RKe PERSONA FAMILY</div>
-              <div className="persona-subtitle">Runtime personalities built on the ARCHEngine</div>
-              <div className="persona-list">
-                {personas.map(([name, desc], index) => (
-                  <div key={name} className={`persona-card depth-${index}`}>
+              <div className="persona-title">RESIDENTS</div>
+              <div className="persona-subtitle">Three expressions. One underlying architecture.</div>
+              <div className="persona-list resident-list">
+                {residents.map(([name, desc, href], index) => (
+                  <a key={name} href={href} className={`persona-card depth-${index}`}>
                     <div className="persona-name">{name}</div>
                     <div className="persona-desc">// {desc}</div>
-                  </div>
+                  </a>
                 ))}
               </div>
             </section>
           </div>
         </section>
 
-        <section className="basement-panel" id="basement">
-          <p className="basement-kicker">Founders Basement / Goblins Only</p>
-          <BootTerminal />
-        </section>
-
-        <section className="troll-panel" id="troll">
-          <div className="terminal-card troll-card">
-            <span>NO?</span>
-            <strong>OKAY. TROLL HOLE.</strong>
-            <span>THIS IS WHAT HAPPENS WHEN YOU PICK THE FUNNY WRONG ANSWER.</span>
-            <span>RETURN TO BASEMENT ACCESS?</span>
-            <a className="choice-link" href="#basement">Y</a>
+        <section className="workbench-section" aria-label="Projects on the workbench">
+          <div className="persona-section workbench-panel">
+            <div className="persona-title">ON THE WORKBENCH</div>
+            <div className="persona-subtitle">Quiet projects. No timelines. No promises. Just work.</div>
+            <div className="persona-list workbench-list">
+              {workbench.map(([name, desc, href], index) => (
+                <a key={name} href={href} className={`persona-card depth-${index}`}>
+                  <div className="persona-name">{name}</div>
+                  <div className="persona-desc">// {desc}</div>
+                </a>
+              ))}
+            </div>
           </div>
         </section>
       </section>
