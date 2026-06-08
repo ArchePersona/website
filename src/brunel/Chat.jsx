@@ -39,6 +39,55 @@ const MODE_VISUALS = {
   "911": { label: "Emergency", className: "mode-emergency" },
 };
 
+const TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+const nowIso = () => new Date().toISOString();
+
+const formatAbsoluteTime = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return TIME_FORMATTER.format(d);
+};
+
+const formatRelativeTime = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const then = d.getTime();
+  if (Number.isNaN(then)) return "";
+
+  const deltaMs = Date.now() - then;
+  if (deltaMs < 0) return "now";
+
+  const minutes = Math.floor(deltaMs / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+
+  const years = Math.floor(days / 365);
+  return `${years}y ago`;
+};
+
+const formatTimeLabel = (iso) => {
+  const absolute = formatAbsoluteTime(iso);
+  const relative = formatRelativeTime(iso);
+  if (!absolute) return "";
+  return relative ? `${absolute} · ${relative}` : absolute;
+};
 
 function Chat() {
   const { user, session, signOut } = useAuth();
@@ -255,8 +304,9 @@ function Chat() {
       const raw = await file.text();
       const truncated = raw.length > MAX_FILE_CHARS;
       const body = truncated ? raw.slice(0, MAX_FILE_CHARS) : raw;
+      const attachedAt = formatAbsoluteTime(nowIso());
 
-      const fileBlock = `\n\n[Attached file: ${file.name}${truncated ? " · truncated" : ""}]\n\`\`\`\n${body}\n\`\`\``;
+      const fileBlock = `\n\n[Attached file: ${file.name}${truncated ? " · truncated" : ""}${attachedAt ? ` · ${attachedAt}` : ""}]\n\`\`\`\n${body}\n\`\`\``;
 
       setText((current) => `${current}${current.trim() ? "\n" : ""}${fileBlock}`.trimStart());
       setFileStatus(`${file.name}${truncated ? " attached, truncated" : " attached"}`);
@@ -390,24 +440,32 @@ function Chat() {
     const requestDouble = doubleMode;
     const userId = `user-${Date.now()}`;
     const assistantId = `assistant-${Date.now() + 1}`;
+    const userTs = nowIso();
 
     setSending(true);
     setText("");
 
     setMessages((m) => [
       ...m,
-      { id: userId, role: "user", content: msg, ts: new Date().toISOString() },
+      { id: userId, role: "user", content: msg, ts: userTs },
     ]);
 
     try {
       const r = await axios.post(
         `${API}/chat`,
-        { message: msg, target: requestDouble ? "both" : "rk_only", model: selectedModel },
+        {
+          message: msg,
+          target: requestDouble ? "both" : "rk_only",
+          model: selectedModel,
+          client_ts: userTs,
+          client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+        },
         { headers: authHeader, timeout: 45000 }
       );
 
       const d = r.data;
       const content = d.rk_response || d.plain_response || "";
+      const assistantTs = d.ts || d.created_at || nowIso();
 
       if (voiceEnabled && content) {
         setMessages((m) => [
@@ -417,7 +475,7 @@ function Chat() {
             role: "assistant",
             content: "",
             plain: requestDouble ? d.plain_response || "" : null,
-            ts: new Date().toISOString(),
+            ts: assistantTs,
             state: d.current_state_id || "St0",
             mode: d.current_mode_id || "011",
           },
@@ -434,7 +492,7 @@ function Chat() {
             role: "assistant",
             content,
             plain: requestDouble ? d.plain_response || "" : null,
-            ts: new Date().toISOString(),
+            ts: assistantTs,
             state: d.current_state_id || "St0",
             mode: d.current_mode_id || "011",
           },
@@ -450,7 +508,7 @@ function Chat() {
           role: "assistant",
           content: errMsg,
           plain: requestDouble ? errMsg : null,
-          ts: new Date().toISOString(),
+          ts: nowIso(),
           state: "St0",
           mode: "011",
         },
@@ -500,7 +558,7 @@ function Chat() {
           plain: m.plain || null,
           assistantTs: m.ts,
           assistantState: m.state || "St0",
-          assistantMode: m.mode || "011",
+          assistantMode: "011",
         });
       }
     }
@@ -510,18 +568,12 @@ function Chat() {
     return out;
   }, [messages]);
 
-  const fmtTs = (iso) => {
-    if (!iso) return "";
-
-    const d = new Date(iso);
-
-    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-  };
+  const fmtTs = (iso) => formatTimeLabel(iso);
 
   const formatThread = () => pairs.map((p) => [
-    p.user && `You: ${p.user}`,
-    p.plain && `CUS_SER_REP_1337: ${p.plain}`,
-    p.assistant && `BRUNEL: ${p.assistant}`,
+    p.user && `[${fmtTs(p.userTs)}]\nYou: ${p.user}`,
+    p.plain && `[${fmtTs(p.assistantTs)}]\nCUS_SER_REP_1337: ${p.plain}`,
+    p.assistant && `[${fmtTs(p.assistantTs)}]\nBRUNEL: ${p.assistant}`,
   ].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
 
   const copyThread = async () => {
