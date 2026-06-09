@@ -77,6 +77,32 @@
   color: var(--white);
 }
 
+/* Kill the old side-by-side placeholder in normal conversation mode. */
+.input-row {
+  position: relative;
+}
+
+.input-row textarea.input::placeholder {
+  color: transparent;
+}
+
+.input-row:has(textarea.input:placeholder-shown)::before {
+  content: "Message Brunel...";
+  position: absolute;
+  left: calc(112px + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  color: var(--dim);
+  font-family: var(--terminal-mono);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.app:has(.chat-grid.double) .input-row:has(textarea.input:placeholder-shown)::before {
+  content: "Seed the same prompt...";
+}
+
 /* Mobile: reclaim vertical height immediately. */
 @media (max-width: 720px) {
   .app {
@@ -100,5 +126,9 @@
     min-width: 96px;
     max-width: 96px;
     flex-basis: 96px;
+  }
+
+  .input-row:has(textarea.input:placeholder-shown)::before {
+    left: calc(96px + 12px);
   }
 }
