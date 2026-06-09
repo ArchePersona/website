@@ -83,23 +83,36 @@
 .model-select,
 .input-row textarea.input,
 .input-row .file-btn,
-.input-row .send {
+.input-row .send,
+.input-row .mic-btn {
   border: 0 !important;
   box-shadow: none !important;
   background-color: transparent !important;
 }
 
 .model-select {
-  width: 64px;
-  min-width: 64px;
-  max-width: 64px;
+  width: 42px;
+  min-width: 42px;
+  max-width: 42px;
   height: 44px;
-  flex: 0 0 64px;
-  padding-left: 6px;
-  padding-right: 18px;
+  flex: 0 0 42px;
+  padding: 0;
   border-right: 1px solid rgba(184, 148, 10, 0.08) !important;
   border-radius: 0;
-  color: var(--white);
+  color: transparent;
+  font-size: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23b8940a' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 7h16'/%3E%3Cpath d='M4 12h16'/%3E%3Cpath d='M4 17h16'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 19px 19px !important;
+}
+
+.model-select option {
+  color: #f0ede8;
+  background: #060a0e;
   font-size: 13px;
 }
 
@@ -120,6 +133,7 @@
 }
 
 .input-row .file-btn,
+.input-row .mic-btn,
 .input-row .send {
   width: 36px;
   min-width: 36px;
@@ -129,7 +143,8 @@
   border-radius: 0;
 }
 
-.input-row .send {
+.input-row .send,
+.input-row .mic-btn {
   color: var(--gold);
 }
 
@@ -160,11 +175,11 @@
   }
 
   .model-select {
-    width: 58px;
-    min-width: 58px;
-    max-width: 58px;
-    flex-basis: 58px;
-    font-size: 12px;
+    width: 38px;
+    min-width: 38px;
+    max-width: 38px;
+    flex-basis: 38px;
+    background-size: 18px 18px !important;
   }
 
   .input-row textarea.input {
@@ -175,6 +190,7 @@
   }
 
   .input-row .file-btn,
+  .input-row .mic-btn,
   .input-row .send {
     width: 34px;
     min-width: 34px;
