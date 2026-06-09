@@ -8,6 +8,7 @@ import {
   estimateTypingTickMs,
 } from "../utils/speechSync";
 import "./App.css";
+import "./visible-ui-fix.css";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://brunel-5lxo.onrender.com";
 const API = `${BACKEND_URL}/api`;
