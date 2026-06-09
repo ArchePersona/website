@@ -90,24 +90,28 @@
 }
 
 .model-select {
-  width: 86px;
-  min-width: 86px;
-  max-width: 86px;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
   height: 44px;
-  flex: 0 0 86px;
-  padding-left: 8px;
-  border-right: 1px solid rgba(184, 148, 10, 0.24) !important;
+  flex: 0 0 64px;
+  padding-left: 6px;
+  padding-right: 18px;
+  border-right: 1px solid rgba(184, 148, 10, 0.08) !important;
   border-radius: 0;
   color: var(--white);
+  font-size: 13px;
 }
 
 .input-row textarea.input {
-  min-width: 0;
+  min-width: 120px;
   height: 44px;
   min-height: 44px;
   flex: 1 1 auto;
-  padding: 13px 12px 10px;
+  padding: 13px 14px 10px;
+  overflow: hidden;
   resize: none;
+  white-space: nowrap;
 }
 
 .input-row textarea.input::placeholder {
@@ -117,11 +121,11 @@
 
 .input-row .file-btn,
 .input-row .send {
-  width: 42px;
-  min-width: 42px;
+  width: 36px;
+  min-width: 36px;
   height: 44px;
-  flex: 0 0 42px;
-  border-left: 1px solid rgba(184, 148, 10, 0.18) !important;
+  flex: 0 0 36px;
+  border-left: 1px solid rgba(184, 148, 10, 0.08) !important;
   border-radius: 0;
 }
 
@@ -156,23 +160,24 @@
   }
 
   .model-select {
-    width: 76px;
-    min-width: 76px;
-    max-width: 76px;
-    flex-basis: 76px;
-    font-size: 14px;
+    width: 58px;
+    min-width: 58px;
+    max-width: 58px;
+    flex-basis: 58px;
+    font-size: 12px;
   }
 
   .input-row textarea.input {
-    padding-left: 10px;
+    min-width: 130px;
+    padding-left: 12px;
     padding-right: 8px;
     font-size: 13px;
   }
 
   .input-row .file-btn,
   .input-row .send {
-    width: 38px;
-    min-width: 38px;
-    flex-basis: 38px;
+    width: 34px;
+    min-width: 34px;
+    flex-basis: 34px;
   }
 }
