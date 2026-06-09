@@ -12,13 +12,11 @@
   flex-wrap: wrap;
 }
 
-/* Email and admin actions are not primary conversation UI. */
 .topbar .session-id,
 .topbar .reset-btn {
   display: none !important;
 }
 
-/* Single/Double is state, not two big action buttons. */
 .view-toggle {
   display: inline-flex;
   align-items: center;
@@ -64,46 +62,39 @@
   box-shadow: 0 0 14px rgba(184, 148, 10, 0.10);
 }
 
-/* Model selector should not dominate the composer. */
+.speech-status,
+.input-row > button:nth-of-type(1),
+.input-row > button:nth-of-type(2),
+.input-row > button:nth-of-type(4) {
+  display: none !important;
+}
+
 .model-select {
-  width: 112px;
-  min-width: 112px;
-  max-width: 112px;
+  width: 94px;
+  min-width: 94px;
+  max-width: 94px;
   height: 44px;
-  flex: 0 0 112px;
+  flex: 0 0 94px;
   border-radius: 6px;
   border-color: rgba(184, 148, 10, 0.36);
   background-color: rgba(0, 0, 0, 0.28);
   color: var(--white);
 }
 
-/* Kill the old side-by-side placeholder in normal conversation mode. */
 .input-row {
-  position: relative;
+  align-items: stretch;
 }
 
 .input-row textarea.input::placeholder {
-  color: transparent;
-}
-
-.input-row:has(textarea.input:placeholder-shown)::before {
-  content: "Message Brunel...";
-  position: absolute;
-  left: calc(112px + 12px);
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 1;
   color: var(--dim);
-  font-family: var(--terminal-mono);
-  font-size: 12px;
-  pointer-events: none;
+  opacity: 0.78;
 }
 
-.app:has(.chat-grid.double) .input-row:has(textarea.input:placeholder-shown)::before {
-  content: "Seed the same prompt...";
+.input-row::before {
+  display: none !important;
+  content: none !important;
 }
 
-/* Mobile: reclaim vertical height immediately. */
 @media (max-width: 720px) {
   .app {
     gap: 10px;
@@ -122,13 +113,9 @@
   }
 
   .model-select {
-    width: 96px;
-    min-width: 96px;
-    max-width: 96px;
-    flex-basis: 96px;
-  }
-
-  .input-row:has(textarea.input:placeholder-shown)::before {
-    left: calc(96px + 12px);
+    width: 86px;
+    min-width: 86px;
+    max-width: 86px;
+    flex-basis: 86px;
   }
 }
