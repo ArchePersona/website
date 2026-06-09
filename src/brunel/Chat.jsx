@@ -668,6 +668,7 @@ function Chat() {
       </div>
 
       <div className="panel-input shared-seed-box">
+        {/* Speech status is flagged out while voice experiments are paused.
         <div className="speech-status">
           {fileStatus || (
             listening
@@ -679,6 +680,7 @@ function Chat() {
                   : "speech input unsupported here"
           )}
         </div>
+        */}
 
         <input
           ref={fileInputRef}
@@ -689,6 +691,7 @@ function Chat() {
         />
 
         <div className="input-row">
+          {/* Voice and playback controls are flagged out while the experiment is paused.
           <button
             className={`voice-btn ${voiceEnabled ? "active" : ""}`}
             onClick={toggleVoiceMode}
@@ -708,7 +711,7 @@ function Chat() {
           >
             {speaking ? "◼" : <Volume2 size={14} />}
           </button>
-
+          */}
 
           <select
             className="model-select"
@@ -727,7 +730,7 @@ function Chat() {
 
           <textarea
             className="input"
-            placeholder="Seed the same prompt..."
+            placeholder={doubleMode ? "Seed the same prompt..." : "Message Brunel..."}
             value={text}
             disabled={sending}
             onChange={(e) => setText(e.target.value)}
@@ -736,9 +739,11 @@ function Chat() {
 
           <button className="file-btn" onClick={openFilePicker} disabled={sending} aria-label="attach file"><Paperclip size={14} /></button>
 
+          {/* Mic input is flagged out while the speech experiment is paused.
           <button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleSpeech} disabled={sending} aria-label={listening ? "stop voice input" : "start voice input"}>
             {listening ? <MicOff size={14} /> : <Mic size={14} />}
           </button>
+          */}
 
           <button className="send" onClick={send} disabled={sending || !text.trim()} aria-label="send"><Send size={14} /></button>
         </div>
