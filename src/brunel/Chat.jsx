@@ -728,6 +728,8 @@ function Chat() {
             <option value="qwen">Qwen</option>
           </select>
 
+          <button className="file-btn" onClick={openFilePicker} disabled={sending} aria-label="attach file" title="Attach file"><Paperclip size={14} /></button>
+
           <textarea
             className="input"
             placeholder={doubleMode ? "Seed the same prompt..." : "Message Brunel..."}
@@ -737,13 +739,15 @@ function Chat() {
             onKeyDown={onKey}
           />
 
-          <button className="file-btn" onClick={openFilePicker} disabled={sending} aria-label="attach file"><Paperclip size={14} /></button>
-
-          {/* Mic input is flagged out while the speech experiment is paused.
-          <button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleSpeech} disabled={sending} aria-label={listening ? "stop voice input" : "start voice input"}>
+          <button
+            className={`mic-btn ${listening ? "listening" : ""}`}
+            onClick={toggleSpeech}
+            disabled={sending}
+            aria-label={listening ? "stop voice input" : "start voice input"}
+            title={listening ? "Stop voice input" : "Start voice input"}
+          >
             {listening ? <MicOff size={14} /> : <Mic size={14} />}
           </button>
-          */}
 
           <button className="send" onClick={send} disabled={sending || !text.trim()} aria-label="send"><Send size={14} /></button>
         </div>
