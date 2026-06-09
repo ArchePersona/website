@@ -343,11 +343,6 @@ button.send, button.mic-btn, button.file-btn { width: 38px; background: transpar
   gap: 10px;
 }
 
-.panel-input.shared-seed-box .model-select {
-  flex: 0 0 165px;
-  min-width: 165px;
-}
-
 .panel-input.shared-seed-box textarea.input {
   min-width: 0;
 }
