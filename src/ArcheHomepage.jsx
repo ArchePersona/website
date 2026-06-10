@@ -33,13 +33,11 @@ function HomeView() {
       </section>
 
       <section className="ap-motto" aria-label="ArchePersona statement">
-        <p>Behavioral infrastructure for character and consequence.</p>
-        <small>Powered by ARCHEngine, our proprietary behavioral runtime.</small>
+        <p>Behavioral infrastructure<br />for character and consequence.</p>
       </section>
 
       <nav className="ap-axis" aria-label="ArchePersona spine">
         <a href="/creations">CHARACTER</a>
-        <a href="/archengine">ARCHEngine</a>
         <a href="/oversight">CONSEQUENCE</a>
       </nav>
 
@@ -51,6 +49,8 @@ function HomeView() {
           </a>
         ))}
       </section>
+
+      <footer className="ap-footer">Powered by ARCHEngine.</footer>
     </main>
   );
 }
