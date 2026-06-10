@@ -21,10 +21,10 @@
 
 .ap-hero-logo {
   position: absolute;
-  top: 6%;
-  left: 50%;
+  top: 3.5%;
+  left: 51%;
   transform: translateX(-50%);
-  width: min(78vw, 700px);
+  width: min(68vw, 610px);
   height: auto;
   z-index: 5;
   pointer-events: none;
@@ -252,8 +252,9 @@
 
 @media (max-width: 780px) {
   .ap-hero-logo {
-    top: 4%;
-    width: 82vw;
+    top: 1.5%;
+    left: 51%;
+    width: 70vw;
   }
 
   .ap-duality {
@@ -263,9 +264,15 @@
   }
 
   .ap-nav {
-    flex-direction: column;
-    gap: 0.9rem;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: clamp(0.55rem, 3vw, 1.25rem);
     align-items: center;
+  }
+
+  .ap-nav a {
+    font-size: clamp(0.62rem, 2.35vw, 0.9rem);
+    letter-spacing: 0.14em;
   }
 
   .ap-product-grid {
