@@ -44,11 +44,13 @@ function HomeView() {
 
       <nav className="ap-nav" aria-label="ArchePersona navigation">
         <a href="/about">ABOUT</a>
+        <span className="ap-nav-separator" aria-hidden="true">|</span>
         <a href="/archengine">ARCHEngine</a>
+        <span className="ap-nav-separator" aria-hidden="true">|</span>
         <a href="/contact">CONTACT</a>
       </nav>
 
-      <footer className="ap-footer">Powered by ARCHEngine.</footer>
+      <footer className="ap-footer">Powered by ARCHEngine</footer>
     </main>
   );
 }
