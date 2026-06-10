@@ -1,6 +1,6 @@
 import './arche-home.css';
 import heroImage from './images/file_000000004274720c9ccd5c5a01ca599a.png';
-import logoImage from './images/file_00000000ceb0722f85c57e999afbf53c.png';
+import logoImage from './images/file_00000000f5f0720c904985f294fd517d.png';
 
 const creations = [
   ['Brunel', 'The Builder', '/brunel/disclaimer', false],
