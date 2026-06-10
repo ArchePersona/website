@@ -37,20 +37,22 @@ function HomeView() {
       </section>
 
       <section className="ap-doctrine" aria-label="ArchePersona doctrine">
-        <p>Without character, there is nothing to love.</p>
-        <p>Without consequence, there is nothing to trust.</p>
-        <p>ArchePersona builds both.</p>
+        <p>Without character, there is nothing to love, and without consequence, character becomes fantasy.</p>
+        <p>Without consequence, there is nothing to trust, and without character, consequence becomes machinery.</p>
+        <p>We build both.</p>
       </section>
 
-      <nav className="ap-nav" aria-label="ArchePersona navigation">
-        <a href="/about">ABOUT</a>
-        <span className="ap-nav-separator" aria-hidden="true">|</span>
-        <a href="/archengine">ARCHEngine</a>
-        <span className="ap-nav-separator" aria-hidden="true">|</span>
-        <a href="/contact">CONTACT</a>
-      </nav>
+      <div className="ap-bottom">
+        <nav className="ap-nav" aria-label="ArchePersona navigation">
+          <a href="/about">ABOUT</a>
+          <span className="ap-nav-separator" aria-hidden="true">|</span>
+          <a href="/archengine">ARCHEngine</a>
+          <span className="ap-nav-separator" aria-hidden="true">|</span>
+          <a href="/contact">CONTACT</a>
+        </nav>
 
-      <footer className="ap-footer">Powered by ARCHEngine</footer>
+        <footer className="ap-footer">Powered by ARCHEngine</footer>
+      </div>
     </main>
   );
 }
