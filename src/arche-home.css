@@ -19,12 +19,23 @@
   height: auto;
 }
 
+.ap-hero-logo {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(78vw, 700px);
+  height: auto;
+  z-index: 5;
+  pointer-events: none;
+}
+
 .ap-zone {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 45%;
-  z-index: 3;
+  z-index: 6;
 }
 
 .ap-zone-left { left: 0; }
@@ -240,6 +251,11 @@
 }
 
 @media (max-width: 780px) {
+  .ap-hero-logo {
+    top: 4%;
+    width: 82vw;
+  }
+
   .ap-duality {
     gap: 0.48rem;
     letter-spacing: 0.05em;
