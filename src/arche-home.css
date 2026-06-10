@@ -1,0 +1,132 @@
+@import url('https://fonts.googleapis.com/css2?family=Audiowide&family=EB+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap');
+
+.ap-home {
+  min-height: 100vh;
+  background: #050606;
+  color: #f1ddba;
+}
+
+.ap-hero {
+  position: relative;
+  width: 100%;
+  background: #050606;
+  overflow: hidden;
+}
+
+.ap-hero-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ap-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 45%;
+  z-index: 3;
+}
+
+.ap-zone-left { left: 0; }
+.ap-zone-right { right: 0; }
+
+.ap-zone:hover,
+.ap-zone:focus-visible {
+  background: rgba(229, 169, 68, 0.055);
+  outline: none;
+}
+
+.ap-axis {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid rgba(215, 153, 55, 0.5);
+  border-bottom: 1px solid rgba(215, 153, 55, 0.32);
+  background: rgba(5, 6, 6, 0.94);
+}
+
+.ap-axis a {
+  min-height: 92px;
+  display: grid;
+  place-content: center;
+  gap: 0.35rem;
+  text-align: center;
+  color: inherit;
+  text-decoration: none;
+  border-left: 1px solid rgba(215, 153, 55, 0.26);
+}
+
+.ap-axis a:first-child { border-left: 0; }
+
+.ap-axis span,
+.ap-card span {
+  font-family: Audiowide, Inter, sans-serif;
+  letter-spacing: 0.34em;
+  font-weight: 400;
+  color: #ffe5b2;
+  text-transform: uppercase;
+}
+
+.ap-axis small {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1rem;
+  color: rgba(245, 220, 178, 0.86);
+}
+
+.ap-cards {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1.2rem;
+  padding: clamp(1.2rem, 3vw, 2.4rem);
+  background: linear-gradient(180deg, #080909, #020303);
+}
+
+.ap-card {
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.9rem;
+  padding: 1.2rem;
+  text-align: center;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid rgba(215, 153, 55, 0.42);
+  border-radius: 12px;
+  background: rgba(19, 17, 14, 0.82);
+}
+
+.ap-card p {
+  margin: 0;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1.04rem;
+  line-height: 1.25;
+  color: rgba(245, 220, 178, 0.82);
+}
+
+.ap-card:hover,
+.ap-card:focus-visible {
+  border-color: rgba(255, 198, 94, 0.78);
+  background: rgba(36, 27, 16, 0.88);
+  outline: none;
+}
+
+@media (max-width: 780px) {
+  .ap-axis,
+  .ap-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .ap-axis a {
+    min-height: 74px;
+    border-left: 0;
+    border-top: 1px solid rgba(215, 153, 55, 0.2);
+  }
+
+  .ap-zone {
+    width: 50%;
+  }
+
+  .ap-cards {
+    gap: 0.75rem;
+  }
+}
