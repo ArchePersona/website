@@ -1,14 +1,6 @@
 import './arche-home.css';
 import heroImage from './images/file_00000000820471f5b7072848b02c50d8.png';
 
-const destinationCards = [
-  ['CREATIONS', 'Personalities and lives.', '/creations'],
-  ['ABOUT', 'The company and mission.', '/about'],
-  ['ARCHEngine', 'The behavioral runtime.', '/archengine'],
-  ['CONTACT', 'Reach out.', '/contact'],
-  ['OVERSIGHT', 'Authority and V-Hold.', '/oversight'],
-];
-
 const creations = [
   ['Brunel', 'The Builder', '/brunel/disclaimer', false],
   ['Psyrene', 'The Alluring Dance', 'https://github.com/ArchePersona/psyrene', false],
@@ -28,27 +20,31 @@ function HomeView() {
     <main className="ap-home" id="top">
       <section className="ap-hero" aria-label="ArchePersona hero">
         <img className="ap-hero-image" src={heroImage} alt="ArchePersona hero" />
-        <a className="ap-zone ap-zone-left" href="/creations" aria-label="Open Creations" />
-        <a className="ap-zone ap-zone-right" href="/oversight" aria-label="Open Oversight" />
+        <a className="ap-zone ap-zone-left" href="/brunel/disclaimer" aria-label="Character" />
+        <a className="ap-zone ap-zone-right" href="/oversight" aria-label="Consequence" />
       </section>
 
-      <section className="ap-motto" aria-label="ArchePersona statement">
-        <p>Behavioral infrastructure<br />for character and consequence.</p>
+      <section className="ap-statement" aria-label="ArchePersona statement">
+        <div className="ap-statement-line">Behavioral infrastructure</div>
+        <div className="ap-statement-for">for</div>
+        <div className="ap-duality">
+          <a href="/brunel/disclaimer">CHARACTER</a>
+          <span>&amp;</span>
+          <a href="/oversight">CONSEQUENCE</a>
+        </div>
       </section>
 
-      <nav className="ap-axis" aria-label="ArchePersona spine">
-        <a href="/creations">CHARACTER</a>
-        <a href="/oversight">CONSEQUENCE</a>
+      <section className="ap-doctrine" aria-label="ArchePersona doctrine">
+        <p>Without character, there is nothing to love.</p>
+        <p>Without consequence, there is nothing to trust.</p>
+        <p>ArchePersona builds both.</p>
+      </section>
+
+      <nav className="ap-nav" aria-label="ArchePersona navigation">
+        <a href="/about">ABOUT</a>
+        <a href="/archengine">ARCHEngine</a>
+        <a href="/contact">CONTACT</a>
       </nav>
-
-      <section className="ap-cards" aria-label="ArchePersona destinations">
-        {destinationCards.map(([title, copy, href]) => (
-          <a className="ap-card" href={href} key={title}>
-            <span>{title}</span>
-            <p>{copy}</p>
-          </a>
-        ))}
-      </section>
 
       <footer className="ap-footer">Powered by ARCHEngine.</footer>
     </main>
