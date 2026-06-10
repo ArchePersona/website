@@ -58,7 +58,10 @@
 .ap-axis a:first-child { border-left: 0; }
 
 .ap-axis span,
-.ap-card span {
+.ap-card span,
+.ap-product span,
+.ap-kicker,
+.ap-back {
   font-family: Audiowide, Inter, sans-serif;
   letter-spacing: 0.34em;
   font-weight: 400;
@@ -104,15 +107,122 @@
 }
 
 .ap-card:hover,
-.ap-card:focus-visible {
+.ap-card:focus-visible,
+.ap-product:hover,
+.ap-product:focus-visible {
   border-color: rgba(255, 198, 94, 0.78);
   background: rgba(36, 27, 16, 0.88);
   outline: none;
 }
 
+.ap-subpage {
+  display: grid;
+  place-items: center;
+  padding: clamp(1.2rem, 4vw, 3rem);
+  background:
+    radial-gradient(circle at 50% 16%, rgba(229, 169, 68, 0.18), transparent 22rem),
+    linear-gradient(180deg, #080909, #030303 70%, #010101);
+}
+
+.ap-back {
+  position: fixed;
+  top: clamp(1rem, 3vw, 1.8rem);
+  left: clamp(1rem, 3vw, 1.8rem);
+  z-index: 4;
+  font-size: 0.72rem;
+  text-decoration: none;
+  opacity: 0.78;
+}
+
+.ap-back:hover,
+.ap-back:focus-visible {
+  opacity: 1;
+  outline: none;
+}
+
+.ap-panel {
+  width: min(980px, 92vw);
+  padding: clamp(2rem, 6vw, 5rem);
+  text-align: center;
+  border: 1px solid rgba(215, 153, 55, 0.38);
+  border-radius: 22px;
+  background: rgba(8, 8, 8, 0.78);
+  box-shadow: 0 0 80px rgba(0, 0, 0, 0.45), inset 0 0 42px rgba(229, 169, 68, 0.035);
+}
+
+.ap-kicker {
+  margin-bottom: 1rem;
+  font-size: 0.76rem;
+  color: rgba(255, 229, 178, 0.72);
+}
+
+.ap-panel h1 {
+  margin: 0;
+  font-family: Audiowide, Inter, sans-serif;
+  font-size: clamp(2rem, 7vw, 5.2rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: #ffe5b2;
+  text-transform: uppercase;
+  text-shadow: 0 0 32px rgba(229, 169, 68, 0.16);
+}
+
+.ap-panel p {
+  width: min(720px, 100%);
+  margin: 1.4rem auto 0;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: clamp(1.2rem, 2.4vw, 1.8rem);
+  line-height: 1.25;
+  color: rgba(245, 220, 178, 0.88);
+}
+
+.ap-product-grid {
+  margin-top: clamp(2rem, 4vw, 3rem);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.ap-product {
+  min-height: 150px;
+  display: grid;
+  place-content: center;
+  gap: 0.7rem;
+  padding: 1rem;
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid rgba(215, 153, 55, 0.34);
+  border-radius: 14px;
+  background: rgba(19, 17, 14, 0.72);
+}
+
+.ap-product span {
+  font-size: 0.84rem;
+}
+
+.ap-product small {
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1rem;
+  color: rgba(245, 220, 178, 0.72);
+}
+
+.ap-product.future {
+  opacity: 0.48;
+  filter: grayscale(0.5);
+  cursor: default;
+}
+
+.ap-product.future:hover {
+  border-color: rgba(215, 153, 55, 0.34);
+  background: rgba(19, 17, 14, 0.72);
+}
+
 @media (max-width: 780px) {
   .ap-axis,
-  .ap-cards {
+  .ap-cards,
+  .ap-product-grid {
     grid-template-columns: 1fr;
   }
 
@@ -128,5 +238,15 @@
 
   .ap-cards {
     gap: 0.75rem;
+  }
+
+  .ap-back {
+    position: static;
+    margin: 0 0 1rem;
+    justify-self: start;
+  }
+
+  .ap-panel {
+    padding: 1.5rem;
   }
 }
