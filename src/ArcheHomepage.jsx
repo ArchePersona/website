@@ -32,11 +32,16 @@ function HomeView() {
         <a className="ap-zone ap-zone-right" href="/oversight" aria-label="Open Oversight" />
       </section>
 
-      <section className="ap-axis" aria-label="ArchePersona spine">
-        <a href="/creations"><span>CHARACTER</span><small>Who are you?</small></a>
-        <a href="/archengine"><span>ARCHEngine</span><small>The behavioral runtime.</small></a>
-        <a href="/oversight"><span>CONSEQUENCE</span><small>Who do you answer to?</small></a>
+      <section className="ap-motto" aria-label="ArchePersona statement">
+        <p>Behavioral infrastructure for character and consequence.</p>
+        <small>Powered by ARCHEngine, our proprietary behavioral runtime.</small>
       </section>
+
+      <nav className="ap-axis" aria-label="ArchePersona spine">
+        <a href="/creations">CHARACTER</a>
+        <a href="/archengine">ARCHEngine</a>
+        <a href="/oversight">CONSEQUENCE</a>
+      </nav>
 
       <section className="ap-cards" aria-label="ArchePersona destinations">
         {destinationCards.map(([title, copy, href]) => (
