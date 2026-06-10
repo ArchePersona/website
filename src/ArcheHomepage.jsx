@@ -9,7 +9,21 @@ const destinationCards = [
   ['OVERSIGHT', 'Authority and V-Hold.', '/oversight'],
 ];
 
-export default function ArcheHomepage() {
+const creations = [
+  ['Brunel', 'The Builder', '/brunel/disclaimer', false],
+  ['Psyrene', 'The Alluring Dance', 'https://github.com/ArchePersona/psyrene', false],
+  ['GalBud', 'The Home Base', 'https://github.com/ArchePersona/galbud', false],
+  ['CHIMERA', 'Character constructor', 'https://github.com/ArchePersona/chimera', false],
+];
+
+const oversight = [
+  ['V-Hold', 'Always On Guard', 'https://github.com/ArchePersona/behold', false],
+  ['Sentinel', 'Future Release', null, true],
+  ['Watchman', 'Future Release', null, true],
+  ['Steward', 'Future Release', null, true],
+];
+
+function HomeView() {
   return (
     <main className="ap-home" id="top">
       <section className="ap-hero" aria-label="ArchePersona hero">
@@ -34,4 +48,52 @@ export default function ArcheHomepage() {
       </section>
     </main>
   );
+}
+
+function DestinationPage({ kicker, title, copy, items }) {
+  return (
+    <main className="ap-home ap-subpage">
+      <a className="ap-back" href="/">ArchePersona</a>
+      <section className="ap-panel">
+        <div className="ap-kicker">{kicker}</div>
+        <h1>{title}</h1>
+        <p>{copy}</p>
+        {items && (
+          <div className="ap-product-grid">
+            {items.map(([name, detail, href, future]) => {
+              const content = <><span>{name}</span><small>{detail}</small></>;
+              if (future) return <div className="ap-product future" key={name}>{content}</div>;
+              return <a className="ap-product" href={href} key={name}>{content}</a>;
+            })}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}
+
+export default function ArcheHomepage() {
+  const path = window.location.pathname;
+
+  if (path === '/creations') {
+    return <DestinationPage kicker="Creations" title="RK Persona Studios" copy="Character is who an agent is. These are the lives and personalities brought into the world." items={creations} />;
+  }
+
+  if (path === '/oversight') {
+    return <DestinationPage kicker="Oversight" title="Centurion Oversight" copy="Consequence is what an agent answers to. V-Hold is the first public instrument of that work." items={oversight} />;
+  }
+
+  if (path === '/archengine') {
+    return <DestinationPage kicker="ARCHEngine" title="Behavioral Runtime" copy="Powered by ARCHEngine, our proprietary behavioral runtime." />;
+  }
+
+  if (path === '/about') {
+    return <DestinationPage kicker="About" title="ArchePersona" copy="Behavioral infrastructure for character and consequence." />;
+  }
+
+  if (path === '/contact') {
+    return <DestinationPage kicker="Contact" title="Start a Conversation" copy="Reach out to ArchePersona for demos, questions, or collaboration." />;
+  }
+
+  return <HomeView />;
 }
