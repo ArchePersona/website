@@ -21,8 +21,8 @@
 
 .ap-hero-logo {
   position: absolute;
-  top: 1.2%;
-  left: 50.5%;
+  top: -3.2%;
+  left: 52.5%;
   transform: translateX(-50%);
   width: min(64vw, 575px);
   height: auto;
@@ -301,8 +301,8 @@
 
 @media (max-width: 780px) {
   .ap-hero-logo {
-    top: -0.5%;
-    left: 50.5%;
+    top: -4.5%;
+    left: 52.5%;
     width: 64vw;
   }
 
