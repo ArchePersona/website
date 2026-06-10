@@ -1,5 +1,6 @@
 import './arche-home.css';
-import heroImage from './images/file_00000000820471f5b7072848b02c50d8.png';
+import heroImage from './images/file_000000004274720c9ccd5c5a01ca599a.png';
+import logoImage from './images/file_00000000ceb0722f85c57e999afbf53c.png';
 
 const creations = [
   ['Brunel', 'The Builder', '/brunel/disclaimer', false],
@@ -19,7 +20,8 @@ function HomeView() {
   return (
     <main className="ap-home" id="top">
       <section className="ap-hero" aria-label="ArchePersona hero">
-        <img className="ap-hero-image" src={heroImage} alt="ArchePersona hero" />
+        <img className="ap-hero-image" src={heroImage} alt="Chimera and tower at sunset" />
+        <img className="ap-hero-logo" src={logoImage} alt="ArchePersona" />
         <a className="ap-zone ap-zone-left" href="/brunel/disclaimer" aria-label="Character" />
         <a className="ap-zone ap-zone-right" href="/oversight" aria-label="Consequence" />
       </section>
