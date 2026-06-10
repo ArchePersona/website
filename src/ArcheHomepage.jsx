@@ -17,7 +17,7 @@ const creations = [
 ];
 
 const oversight = [
-  ['V-Hold', 'Always On Guard', 'https://github.com/ArchePersona/behold', false],
+  ['V-Hold', 'Always On Guard', 'https://centurion-oversight.onrender.com', false],
   ['Sentinel', 'Future Release', null, true],
   ['Watchman', 'Future Release', null, true],
   ['Steward', 'Future Release', null, true],
