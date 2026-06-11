@@ -29,9 +29,7 @@ export default function Disclaimer() {
     if (!allChecked) return;
     try {
       localStorage.setItem(ACCEPTED_KEY, new Date().toISOString());
-    } catch (_) {
-      // ignore localStorage failures
-    }
+    } catch (_) {}
     navigate(next);
   };
 
@@ -66,7 +64,7 @@ export default function Disclaimer() {
         </div>
 
         <div className="auth-info">{checks.filter(Boolean).length} of {ACK_ITEMS.length} acknowledged</div>
-        <button className="auth-submit" disabled={!allChecked} onClick={accept}>Enter Brunel</button>
+        <button className="auth-submit" disabled={!allChecked} onClick={accept}>Start Building</button>
       </div>
     </div>
   );
