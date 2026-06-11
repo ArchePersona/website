@@ -3,10 +3,10 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import "./App.css";
 
 const ACK_ITEMS = [
-  "I understand Brunel is an AI system, not a human.",
-  "I will not rely on Brunel for professional advice in health, legal, finance, or safety matters.",
-  "I am responsible for my choices and actions.",
-  "I will seek human or professional support when needed.",
+  "I understand Brunel is an AI system.",
+  "I remain responsible for my decisions.",
+  "I will seek human support when needed.",
+  "Brunel is a companion, not a replacement.",
 ];
 
 const ACCEPTED_KEY = "brunel_disclaimer_accepted_v1";
@@ -96,6 +96,7 @@ const styles = {
   ackGrid: {
     display: "grid",
     gap: "8px",
+    paddingTop: "clamp(10px, 3vw, 24px)",
   },
   ackRow: {
     display: "flex",
@@ -118,6 +119,15 @@ const styles = {
   ackRowChecked: {
     borderColor: "rgba(184,148,10,.22)",
     background: "rgba(184,148,10,.035)",
+  },
+  signature: {
+    color: "rgba(240,237,232,.48)",
+    fontSize: "clamp(11px, 3vw, 13px)",
+    fontStyle: "italic",
+    lineHeight: 1.5,
+    textAlign: "center",
+    margin: 0,
+    paddingTop: "4px",
   },
   submit: {
     fontSize: "14px",
@@ -173,7 +183,7 @@ export default function Disclaimer() {
           </section>
 
           <section style={styles.infoBox}>
-            <h2 style={styles.sectionTitle}>Important Information</h2>
+            <h2 style={styles.sectionTitle}>Before We Begin</h2>
             <p style={styles.body}>
               Brunel may feel consistent and personal across sessions, but he remains an artificial intelligence system. Responses may occasionally be incorrect or incomplete.
             </p>
@@ -192,6 +202,7 @@ export default function Disclaimer() {
           </div>
 
           <div className="auth-info">{checks.filter(Boolean).length} of {ACK_ITEMS.length} acknowledged</div>
+          <p style={styles.signature}>Build carefully. Build honestly. Build well.</p>
           <button className="auth-submit" style={styles.submit} disabled={!allChecked} onClick={accept}>Start Building</button>
         </div>
       </div>
