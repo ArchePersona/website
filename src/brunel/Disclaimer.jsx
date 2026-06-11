@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AlertTriangle } from "lucide-react";
 import "./App.css";
 
 const ACK_ITEMS = [
@@ -36,14 +35,8 @@ export default function Disclaimer() {
   return (
     <div className="auth-shell disclaimer-shell">
       <div className="auth-card disclaimer-card">
-        <div className="auth-brand">
-          <div className="auth-brand-name">BRUNEL</div>
-          <div className="auth-brand-rule" />
-          <div className="auth-brand-sub">Powered by ARCHE</div>
-        </div>
-
-        <div className="disclaimer-kicker"><AlertTriangle size={14} /> Persona & Use Acknowledgment</div>
         <h1 className="disclaimer-title">Meet Brunel — The Builder</h1>
+        <div className="auth-brand-rule" />
         <p className="auth-subtitle">
           Brunel is a low-nonsense productivity partner built for clear thinking, practical work, and steady progress. He is calm, direct, organized, and more interested in useful outcomes than performance, hype, or drama.
         </p>
