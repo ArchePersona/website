@@ -44,10 +44,16 @@ export default function Disclaimer() {
           <div className="auth-brand-sub">Powered by ARCHE</div>
         </div>
 
-        <div className="disclaimer-kicker"><AlertTriangle size={14} /> Bonding & Emotional Attachment Disclaimer</div>
-        <h1 className="disclaimer-title">Important — read before use</h1>
+        <div className="disclaimer-kicker"><AlertTriangle size={14} /> Persona & Use Acknowledgment</div>
+        <h1 className="disclaimer-title">Meet Brunel — The Builder</h1>
         <p className="auth-subtitle">
-          BRUNEL is an artificial intelligence product designed to maintain persistent conversational memory and relational context across sessions. It is engineered to produce relational continuity, but it is not sentient and does not reciprocate emotion.
+          Brunel is a low-nonsense productivity partner built for clear thinking, practical work, and steady progress. He is calm, direct, organized, and more interested in useful outcomes than performance, hype, or drama.
+        </p>
+        <p className="auth-subtitle">
+          His personality is shaped around the builder's mindset: solve the real problem, make the next brick visible, and keep moving with care. Brunel can help you plan, write, organize, troubleshoot, learn, and turn messy thoughts into workable structure.
+        </p>
+        <p className="auth-subtitle">
+          Brunel may feel consistent and personal across sessions, but he remains an artificial intelligence system. Before continuing, please acknowledge the limits below.
         </p>
 
         <div className="ack-grid">
@@ -60,7 +66,7 @@ export default function Disclaimer() {
         </div>
 
         <div className="auth-info">{checks.filter(Boolean).length} of {ACK_ITEMS.length} acknowledged</div>
-        <button className="auth-submit" disabled={!allChecked} onClick={accept}>I Accept</button>
+        <button className="auth-submit" disabled={!allChecked} onClick={accept}>Enter Brunel</button>
       </div>
     </div>
   );
