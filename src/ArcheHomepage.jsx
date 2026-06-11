@@ -46,6 +46,23 @@ const pages = {
           'We build both.',
         ],
       },
+      {
+        heading: 'Who is behind ArchePersona?',
+        body: [
+          'ArchePersona was founded by Darren Hall.',
+          'For decades, his work centered around systems, infrastructure, diagnostics, and engineering.',
+          'ARCHEngine emerged from a simple conviction: Behavior is an engineering problem.',
+          'That belief became ArchePersona.',
+        ],
+      },
+      {
+        heading: 'Why it matters',
+        body: [
+          'Without character, there is nothing to love.',
+          'Without consequence, there is nothing to trust.',
+          'We build both.',
+        ],
+      },
     ],
   },
   archengine: {
@@ -66,6 +83,15 @@ const pages = {
         body: [
           'Most systems are designed around intelligence. ARCHEngine is designed around behavior.',
           'Intelligence determines what is possible. Character determines who is acting. Consequence determines what follows.',
+        ],
+      },
+      {
+        heading: 'Three principles',
+        body: [
+          'Intelligence determines capability.',
+          'Character determines identity.',
+          'Consequence determines action.',
+          'Trustworthy artificial beings require all three.',
         ],
       },
       {
