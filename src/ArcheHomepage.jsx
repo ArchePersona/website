@@ -16,6 +16,92 @@ const oversight = [
   ['Steward', 'Future Release', null, true],
 ];
 
+const pages = {
+  about: {
+    kicker: 'About',
+    title: 'ArchePersona',
+    lead: 'Behavioral infrastructure for character and consequence.',
+    sections: [
+      {
+        heading: 'Who are we?',
+        body: [
+          'ArchePersona exists because behavior is an engineering problem.',
+          'Intelligence alone does not create trust. Capability alone does not create identity.',
+          'We believe the future of artificial beings will be shaped not only by what they can do, but by who they become and what they answer to.',
+        ],
+      },
+      {
+        heading: 'Why do we exist?',
+        body: [
+          'Modern artificial intelligence has made extraordinary progress in capability. Yet intelligence and behavior are not the same thing.',
+          'The question of capability asks: What can it do?',
+          'The question of behavior asks: Who is acting? And what are the consequences?',
+        ],
+      },
+      {
+        heading: 'What do we build?',
+        body: [
+          'Without character, there is nothing to love, and without consequence, character becomes fantasy.',
+          'Without consequence, there is nothing to trust, and without character, consequence becomes machinery.',
+          'We build both.',
+        ],
+      },
+    ],
+  },
+  archengine: {
+    kicker: 'ARCHEngine',
+    title: 'Behavioral Runtime',
+    lead: 'Adaptive Relational Cognitive Human Emulator.',
+    sections: [
+      {
+        heading: 'Powered by ARCHEngine',
+        body: [
+          'ARCHEngine is the behavioral runtime behind everything we build.',
+          'Its purpose is not merely to produce responses. Its purpose is to cultivate behavior.',
+          'Experience creates meaning. Meaning shapes character. Character influences identity. Consequence governs action.',
+        ],
+      },
+      {
+        heading: 'Behavior before output',
+        body: [
+          'Most systems are designed around intelligence. ARCHEngine is designed around behavior.',
+          'Intelligence determines what is possible. Character determines who is acting. Consequence determines what follows.',
+        ],
+      },
+      {
+        heading: 'The principle',
+        body: [
+          'Trustworthy artificial beings will not arise from intelligence alone.',
+          'They will emerge from the union of character and consequence.',
+          'Behavior is an engineering problem.',
+        ],
+      },
+    ],
+  },
+  contact: {
+    kicker: 'Contact',
+    title: 'Start a Conversation',
+    lead: 'Reach out to ArchePersona for questions, demos, or collaboration.',
+    sections: [
+      {
+        heading: 'Email',
+        body: ['therollingwrenchnc@gmail.com'],
+      },
+      {
+        heading: 'GitHub',
+        body: ['ArchePersona'],
+      },
+      {
+        heading: 'ArchePersona',
+        body: [
+          'Behavioral infrastructure for character and consequence.',
+          'Powered by ARCHEngine.',
+        ],
+      },
+    ],
+  },
+};
+
 function HomeView() {
   return (
     <main className="ap-home" id="top">
@@ -57,14 +143,24 @@ function HomeView() {
   );
 }
 
-function DestinationPage({ kicker, title, copy, items }) {
+function DestinationPage({ kicker, title, lead, copy, sections, items }) {
   return (
     <main className="ap-home ap-subpage">
       <a className="ap-back" href="/">ArchePersona</a>
       <section className="ap-panel">
         <div className="ap-kicker">{kicker}</div>
         <h1>{title}</h1>
-        <p>{copy}</p>
+        {(lead || copy) && <p className="ap-lead">{lead || copy}</p>}
+        {sections && (
+          <div className="ap-content-stack">
+            {sections.map(({ heading, body }) => (
+              <section className="ap-content-section" key={heading}>
+                <h2>{heading}</h2>
+                {body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+              </section>
+            ))}
+          </div>
+        )}
         {items && (
           <div className="ap-product-grid">
             {items.map(([name, detail, href, future]) => {
@@ -91,15 +187,15 @@ export default function ArcheHomepage() {
   }
 
   if (path === '/archengine') {
-    return <DestinationPage kicker="ARCHEngine" title="Behavioral Runtime" copy="Powered by ARCHEngine, our proprietary behavioral runtime." />;
+    return <DestinationPage {...pages.archengine} />;
   }
 
   if (path === '/about') {
-    return <DestinationPage kicker="About" title="ArchePersona" copy="Behavioral infrastructure for character and consequence." />;
+    return <DestinationPage {...pages.about} />;
   }
 
   if (path === '/contact') {
-    return <DestinationPage kicker="Contact" title="Start a Conversation" copy="Reach out to ArchePersona for demos, questions, or collaboration." />;
+    return <DestinationPage {...pages.contact} />;
   }
 
   return <HomeView />;
