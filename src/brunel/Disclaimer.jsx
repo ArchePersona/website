@@ -12,36 +12,40 @@ const ACK_ITEMS = [
 const ACCEPTED_KEY = "brunel_disclaimer_accepted_v1";
 
 const styles = {
+  shell: {
+    alignItems: "flex-start",
+    padding: "clamp(14px, 4vw, 32px)",
+  },
   card: {
     maxWidth: "960px",
-    width: "min(960px, calc(100vw - 32px))",
-    padding: "clamp(28px, 6vw, 52px)",
-    gap: "24px",
+    width: "min(960px, calc(100vw - 16px))",
+    padding: "clamp(20px, 4.8vw, 52px)",
+    gap: "22px",
     background: "linear-gradient(180deg, rgba(7,13,18,.98), rgba(3,7,10,.98))",
     borderColor: "rgba(184,148,10,.28)",
     boxShadow: "0 0 48px rgba(0,0,0,.45)",
   },
   content: {
     width: "100%",
-    maxWidth: "820px",
+    maxWidth: "840px",
     margin: "0 auto",
     display: "grid",
-    gap: "22px",
+    gap: "clamp(16px, 4vw, 22px)",
   },
   titleBlock: {
     display: "grid",
-    gap: "8px",
+    gap: "6px",
   },
   title: {
-    fontSize: "clamp(34px, 6vw, 58px)",
+    fontSize: "clamp(31px, 10vw, 58px)",
     lineHeight: 1.02,
-    letterSpacing: ".01em",
+    letterSpacing: ".005em",
     margin: 0,
   },
   subtitle: {
     color: "var(--gold)",
-    fontSize: "clamp(13px, 2.5vw, 16px)",
-    letterSpacing: ".24em",
+    fontSize: "clamp(12px, 3.3vw, 16px)",
+    letterSpacing: ".22em",
     textTransform: "uppercase",
     margin: 0,
   },
@@ -52,40 +56,40 @@ const styles = {
   },
   lead: {
     color: "#c7d0d4",
-    fontSize: "clamp(15px, 2.5vw, 17px)",
-    lineHeight: 1.7,
+    fontSize: "clamp(14px, 4vw, 17px)",
+    lineHeight: 1.58,
     margin: 0,
   },
   section: {
     display: "grid",
-    gap: "14px",
-    paddingTop: "6px",
+    gap: "clamp(10px, 3vw, 14px)",
+    paddingTop: "4px",
   },
   sectionTitle: {
     color: "var(--gold)",
-    fontSize: "13px",
-    letterSpacing: ".22em",
+    fontSize: "clamp(11px, 3.2vw, 13px)",
+    letterSpacing: ".2em",
     textTransform: "uppercase",
     margin: 0,
   },
   body: {
     color: "#b8c2c8",
-    fontSize: "clamp(14px, 2.3vw, 16px)",
-    lineHeight: 1.75,
+    fontSize: "clamp(13px, 3.7vw, 16px)",
+    lineHeight: 1.6,
     margin: 0,
   },
   principleList: {
     display: "grid",
-    gap: "8px",
+    gap: "7px",
     color: "#c7d0d4",
-    fontSize: "clamp(15px, 2.4vw, 17px)",
-    lineHeight: 1.6,
+    fontSize: "clamp(14px, 3.9vw, 17px)",
+    lineHeight: 1.45,
     margin: 0,
   },
   infoBox: {
     border: "1px solid rgba(184,148,10,.16)",
     background: "rgba(255,255,255,.018)",
-    padding: "18px",
+    padding: "clamp(14px, 4vw, 18px)",
     display: "grid",
     gap: "10px",
   },
@@ -114,7 +118,7 @@ export default function Disclaimer() {
   };
 
   return (
-    <div className="auth-shell disclaimer-shell">
+    <div className="auth-shell disclaimer-shell" style={styles.shell}>
       <div className="auth-card disclaimer-card" style={styles.card}>
         <div style={styles.content}>
           <div style={styles.titleBlock}>
