@@ -85,11 +85,11 @@ const pages = {
     sections: [
       {
         heading: 'Email',
-        body: ['therollingwrenchnc@gmail.com'],
+        body: [{ text: 'therollingwrenchnc@gmail.com', href: 'mailto:therollingwrenchnc@gmail.com' }],
       },
       {
         heading: 'GitHub',
-        body: ['ArchePersona'],
+        body: [{ text: 'ArchePersona', href: 'https://github.com/ArchePersona' }],
       },
       {
         heading: 'ArchePersona',
@@ -143,6 +143,16 @@ function HomeView() {
   );
 }
 
+function renderContentItem(item) {
+  if (typeof item === 'string') return <p key={item}>{item}</p>;
+
+  return (
+    <p key={item.text}>
+      <a className="ap-contact-link" href={item.href}>{item.text}</a>
+    </p>
+  );
+}
+
 function DestinationPage({ kicker, title, lead, copy, sections, items }) {
   return (
     <main className="ap-home ap-subpage">
@@ -156,7 +166,7 @@ function DestinationPage({ kicker, title, lead, copy, sections, items }) {
             {sections.map(({ heading, body }) => (
               <section className="ap-content-section" key={heading}>
                 <h2>{heading}</h2>
-                {body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+                {body.map(renderContentItem)}
               </section>
             ))}
           </div>
