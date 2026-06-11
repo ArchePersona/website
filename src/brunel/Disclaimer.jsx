@@ -87,11 +87,37 @@ const styles = {
     margin: 0,
   },
   infoBox: {
-    border: "1px solid rgba(184,148,10,.16)",
-    background: "rgba(255,255,255,.018)",
-    padding: "clamp(12px, 3.2vw, 18px)",
+    border: "1px solid rgba(184,148,10,.09)",
+    background: "rgba(255,255,255,.01)",
+    padding: "clamp(10px, 2.8vw, 16px)",
     display: "grid",
-    gap: "9px",
+    gap: "8px",
+  },
+  ackGrid: {
+    display: "grid",
+    gap: "8px",
+  },
+  ackRow: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "10px",
+    padding: "clamp(8px, 2.4vw, 11px) clamp(9px, 2.6vw, 12px)",
+    border: "1px solid rgba(184,148,10,.07)",
+    background: "rgba(255,255,255,.008)",
+    color: "#b8c2c8",
+    fontSize: "clamp(12px, 3.15vw, 14px)",
+    lineHeight: 1.45,
+    cursor: "pointer",
+  },
+  ackInput: {
+    width: "14px",
+    height: "14px",
+    marginTop: "2px",
+    flex: "0 0 auto",
+  },
+  ackRowChecked: {
+    borderColor: "rgba(184,148,10,.22)",
+    background: "rgba(184,148,10,.035)",
   },
   submit: {
     fontSize: "14px",
@@ -153,10 +179,13 @@ export default function Disclaimer() {
             </p>
           </section>
 
-          <div className="ack-grid">
+          <div style={styles.ackGrid}>
             {ACK_ITEMS.map((item, i) => (
-              <label className={`ack-row ${checks[i] ? "checked" : ""}`} key={item}>
-                <input type="checkbox" checked={checks[i]} onChange={() => toggle(i)} />
+              <label
+                style={{ ...styles.ackRow, ...(checks[i] ? styles.ackRowChecked : {}) }}
+                key={item}
+              >
+                <input style={styles.ackInput} type="checkbox" checked={checks[i]} onChange={() => toggle(i)} />
                 <span>{item}</span>
               </label>
             ))}
