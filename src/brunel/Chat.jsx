@@ -585,7 +585,7 @@ function Chat() {
 
   const renderPanelPairs = (kind) => (
     <div className="chat-body" ref={kind === "plain" ? plainScrollRef : rkScrollRef}>
-      {pairs.length === 0 ? <div className="empty-state">waiting for prompt</div> : pairs.map((p, i) => (
+      {pairs.length === 0 ? <div className="empty-state">same prompt, two witnesses</div> : pairs.map((p, i) => (
         <div key={i} className="pair">
           {p.user && <div className="bubble bubble-user">{p.user}</div>}
           {kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}
@@ -603,7 +603,7 @@ function Chat() {
 
   const renderSinglePairs = () => (
     <div className="chat-body" ref={rkScrollRef}>
-      {pairs.length === 0 ? <div className="empty-state">say something — i'll remember it</div> : pairs.map((p, i) => (
+      {pairs.length === 0 ? <div className="empty-state">Good afternoon — what are we working on?</div> : pairs.map((p, i) => (
         <div key={i} className="pair">
           {p.user && <div className="bubble bubble-user">{p.user}</div>}
           {p.assistant !== null && (
@@ -732,7 +732,7 @@ function Chat() {
 
           <textarea
             className="input"
-            placeholder={doubleMode ? "Seed the same prompt..." : "Message Brunel..."}
+            placeholder={doubleMode ? "Seed the same prompt..." : "What are we working on?"}
             value={text}
             disabled={sending}
             onChange={(e) => setText(e.target.value)}
