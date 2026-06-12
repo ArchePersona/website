@@ -25,7 +25,7 @@ button, input, textarea, select { font: inherit; }
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  padding: 18px 22px 10px;
+  padding: 16px clamp(14px, 2.8vw, 34px) 10px;
   gap: 10px;
   background: var(--bg);
   color: var(--white);
@@ -39,6 +39,8 @@ button, input, textarea, select { font: inherit; }
   border-bottom: 1px solid rgba(34,197,94,.18);
   padding-bottom: 12px;
   gap: 16px;
+  width: min(1180px, 100%);
+  margin: 0 auto;
 }
 
 .brand { display: flex; flex-direction: column; gap: 4px; }
@@ -74,7 +76,8 @@ button, input, textarea, select { font: inherit; }
   gap: 10px 16px;
   flex: 1;
   min-height: 0;
-  width: 100%;
+  width: min(1240px, 100%);
+  margin: 0 auto;
   overflow: hidden;
 }
 
@@ -82,7 +85,8 @@ button, input, textarea, select { font: inherit; }
   display: flex;
   flex: 1;
   min-height: 0;
-  width: 100%;
+  width: min(1180px, 100%);
+  margin: 0 auto;
 }
 
 .panel {
@@ -149,10 +153,10 @@ button, input, textarea, select { font: inherit; }
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 18px;
+  padding: clamp(18px, 2.3vw, 28px);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
   min-height: 0;
 }
 
@@ -164,11 +168,11 @@ button, input, textarea, select { font: inherit; }
   padding: 4px 18px 7px;
 }
 
-.pair { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pair { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .seed-pair { width: 100%; align-items: center; }
 
 .bubble {
-  max-width: 82%;
+  max-width: min(78%, 78ch);
   font-size: 13px;
   line-height: 1.75;
   white-space: pre-wrap;
@@ -178,19 +182,19 @@ button, input, textarea, select { font: inherit; }
 .bubble-user,
 .bubble-seed {
   color: var(--white);
-  padding: 10px 14px;
+  padding: 11px 15px;
   background: rgba(184,148,10,.045);
   border-left: 1px solid rgba(184,148,10,.45);
   border-radius: 2px;
 }
 
 .bubble-user { align-self: flex-end; }
-.bubble-seed { align-self: center; max-width: min(760px,82%); text-align: center; padding: 7px 12px; line-height: 1.45; }
+.bubble-seed { align-self: center; max-width: min(860px,82%); text-align: center; padding: 7px 12px; line-height: 1.45; }
 
 .bubble-assistant {
   align-self: flex-start;
   color: var(--white);
-  padding: 10px 14px;
+  padding: 12px 16px;
   background: rgba(255,255,255,.018);
   border-left: 1px solid rgba(74,222,128,.18);
   border-radius: 2px;
@@ -212,17 +216,17 @@ button, input, textarea, select { font: inherit; }
 
 .panel-input {
   border-top: 1px solid rgba(184,148,10,.08);
-  padding: 5px 12px 8px;
+  padding: 7px 12px 10px;
   background: rgba(255,255,255,.01);
 }
 
 .panel-input.shared-seed-box { flex: 0 0 auto; }
-.speech-status { min-height: 10px; margin: 0 auto 4px; max-width: 760px; font-size: 8px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
-.input-row { display: flex; gap: 6px; align-items: stretch; max-width: 760px; margin: 0 auto; }
+.speech-status { min-height: 10px; margin: 0 auto 4px; max-width: 920px; font-size: 8px; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
+.input-row { display: flex; gap: 6px; align-items: stretch; max-width: 980px; margin: 0 auto; }
 textarea.input { flex: 1; background: rgba(0,0,0,.3); border: 1px solid rgba(184,148,10,.12); color: var(--white); font-size: 12px; padding: 7px 10px; resize: none; height: 42px; outline: none; }
 .hidden-file-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 button.send, button.mic-btn, button.file-btn { width: 38px; background: transparent; border: 1px solid rgba(184,148,10,.16); color: var(--gold); cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.footnote { display: flex; justify-content: space-between; align-items: center; font-size: 8px; letter-spacing: .16em; color: var(--dim); text-transform: uppercase; }
+.footnote { display: flex; justify-content: space-between; align-items: center; font-size: 8px; letter-spacing: .16em; color: var(--dim); text-transform: uppercase; width: min(1180px, 100%); margin: 0 auto; }
 
 .state-baseline { color: #7CFF8A; }
 .state-tender { color: #B8FFD0; letter-spacing: .025em; line-height: 1.72; }
@@ -280,9 +284,12 @@ button.send, button.mic-btn, button.file-btn { width: 38px; background: transpar
 @media (max-width: 900px) {
   .app { padding: 12px; }
   .chat-grid.double { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
+  .chat-grid.single, .chat-grid.double, .topbar, .footnote { width: 100%; }
   .panel-seed, .panel-plain, .panel-rk { grid-column: 1; grid-row: auto; }
   .topbar { flex-direction: column; }
   .topbar-right { justify-content: flex-start; }
+  .chat-body { padding: 16px; gap: 16px; }
+  .bubble { max-width: 88%; }
 }
 .assistant-wrap {
   display: flex;
