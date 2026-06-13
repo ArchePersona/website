@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cinzel:wght@500;700&family=Inter:wght@400;500;600;700&display=swap');
+
+.vh-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: clamp(1.25rem, 4vw, 3rem);
+  background:
+    radial-gradient(circle at 80% 10%, rgba(235, 174, 76, 0.18), transparent 26rem),
+    radial-gradient(circle at 10% 90%, rgba(135, 94, 38, 0.16), transparent 24rem),
+    linear-gradient(180deg, #080909, #020202 72%, #000);
+  color: #f2ddba;
+}
+
+.vh-back {
+  position: fixed;
+  top: clamp(1rem, 3vw, 1.75rem);
+  left: clamp(1rem, 3vw, 1.75rem);
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(255, 229, 178, 0.74);
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.vh-card {
+  width: min(980px, 94vw);
+  padding: clamp(2rem, 6vw, 5rem);
+  border: 1px solid rgba(229, 169, 68, 0.42);
+  border-radius: 24px;
+  background: rgba(7, 7, 7, 0.86);
+  box-shadow: 0 0 80px rgba(0, 0, 0, 0.58), inset 0 0 60px rgba(229, 169, 68, 0.045);
+  text-align: center;
+}
+
+.vh-kicker {
+  font-family: Inter, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  color: rgba(229, 169, 68, 0.86);
+  text-transform: uppercase;
+}
+
+.vh-card h1 {
+  margin: 0.35rem 0 0;
+  font-family: 'Bebas Neue', Inter, sans-serif;
+  font-size: clamp(5rem, 18vw, 11rem);
+  font-weight: 400;
+  line-height: 0.82;
+  letter-spacing: 0.035em;
+  color: #f7e5c3;
+  text-transform: uppercase;
+  text-shadow: 0 0 34px rgba(229, 169, 68, 0.22);
+}
+
+.vh-tagline {
+  width: min(680px, 100%);
+  margin: 1.25rem auto 0;
+  font-family: Cinzel, Georgia, serif;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.35;
+  color: rgba(255, 229, 178, 0.92);
+  text-transform: uppercase;
+}
+
+.vh-grid {
+  margin: clamp(2rem, 5vw, 3.25rem) auto 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.vh-point {
+  min-height: 150px;
+  padding: 1.15rem;
+  border: 1px solid rgba(229, 169, 68, 0.28);
+  border-radius: 18px;
+  background: rgba(19, 17, 14, 0.68);
+  text-align: left;
+}
+
+.vh-point h2 {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: #f2b75e;
+  text-transform: uppercase;
+}
+
+.vh-point p {
+  margin: 0.8rem 0 0;
+  font-family: Inter, sans-serif;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: rgba(245, 220, 178, 0.84);
+}
+
+.vh-rule {
+  margin: clamp(2rem, 4vw, 3rem) auto 0;
+  font-family: 'Bebas Neue', Inter, sans-serif;
+  font-size: clamp(2rem, 6vw, 4rem);
+  letter-spacing: 0.06em;
+  line-height: 0.95;
+  color: #f7e5c3;
+  text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+  .vh-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vh-card {
+    text-align: left;
+  }
+
+  .vh-tagline,
+  .vh-rule {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
