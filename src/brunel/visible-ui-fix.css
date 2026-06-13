@@ -3,6 +3,7 @@
 .topbar {
   align-items: flex-start;
   gap: 12px;
+  flex-direction: row !important;
 }
 
 .topbar-right {
@@ -10,6 +11,7 @@
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
+  margin-left: auto;
 }
 
 .topbar .session-id,
@@ -194,6 +196,8 @@
   }
 
   .topbar {
+    align-items: flex-start;
+    justify-content: space-between;
     padding-bottom: 10px;
   }
 
@@ -202,7 +206,7 @@
   }
 
   .topbar-right {
-    margin-top: 4px;
+    margin-top: 0;
   }
 
   .shared-seed-box {
