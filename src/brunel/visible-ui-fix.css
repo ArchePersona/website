@@ -64,6 +64,38 @@
   box-shadow: 0 0 14px rgba(184, 118, 58, 0.10);
 }
 
+.drawer-backdrop {
+  opacity: 0;
+  transition: opacity 240ms ease;
+}
+
+.drawer-backdrop.open {
+  opacity: 1;
+}
+
+.drawer-backdrop.closing {
+  opacity: 0;
+}
+
+.drawer {
+  transform: translateX(104%);
+  opacity: 0;
+  transition:
+    transform 240ms cubic-bezier(.22, .85, .28, 1),
+    opacity 180ms ease;
+  will-change: transform, opacity;
+}
+
+.drawer.open {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.drawer.closing {
+  transform: translateX(104%);
+  opacity: 0;
+}
+
 .speech-status {
   display: none !important;
 }
@@ -188,6 +220,13 @@
   background-color: rgba(0,0,0,.18) !important;
   border: 1px solid var(--bronze-soft) !important;
   border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .drawer-backdrop {
+    transition: none;
+  }
 }
 
 @media (max-width: 720px) {
