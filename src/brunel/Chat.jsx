@@ -12,31 +12,11 @@ const API = `${BACKEND_URL}/api`;
 const DRAWER_ANIMATION_MS = 240;
 
 const STATE_VISUALS = {
-  St0: { label: "Baseline", className: "state-baseline" },
-  St1: { label: "Tender", className: "state-tender" },
-  St2: { label: "Eager", className: "state-eager" },
-  St3: { label: "Steady", className: "state-steady" },
-  St4: { label: "Reflective", className: "state-reflective" },
-  St5: { label: "Focused", className: "state-focused" },
-  St6: { label: "Guarded", className: "state-guarded" },
-  St7: { label: "Concerned", className: "state-concerned" },
-  St8: { label: "Restless", className: "state-restless" },
-  St9: { label: "Sharp", className: "state-sharp" },
+  St0: { label: "Baseline", className: "state-baseline" }, St1: { label: "Tender", className: "state-tender" }, St2: { label: "Eager", className: "state-eager" }, St3: { label: "Steady", className: "state-steady" }, St4: { label: "Reflective", className: "state-reflective" }, St5: { label: "Focused", className: "state-focused" }, St6: { label: "Guarded", className: "state-guarded" }, St7: { label: "Concerned", className: "state-concerned" }, St8: { label: "Restless", className: "state-restless" }, St9: { label: "Sharp", className: "state-sharp" },
 };
-
 const MODE_VISUALS = {
-  "011": { label: "Companion", className: "mode-companion" },
-  "111": { label: "Assistant", className: "mode-assistant" },
-  "211": { label: "Hearth", className: "mode-hearth" },
-  "311": { label: "Creative", className: "mode-creative" },
-  "411": { label: "Research", className: "mode-research" },
-  "511": { label: "Tutor", className: "mode-tutor" },
-  "611": { label: "Operations", className: "mode-operations" },
-  "711": { label: "Technical", className: "mode-technical" },
-  "811": { label: "Sentinel", className: "mode-sentinel" },
-  "911": { label: "Emergency", className: "mode-emergency" },
+  "011": { label: "Companion", className: "mode-companion" }, "111": { label: "Assistant", className: "mode-assistant" }, "211": { label: "Hearth", className: "mode-hearth" }, "311": { label: "Creative", className: "mode-creative" }, "411": { label: "Research", className: "mode-research" }, "511": { label: "Tutor", className: "mode-tutor" }, "611": { label: "Operations", className: "mode-operations" }, "711": { label: "Technical", className: "mode-technical" }, "811": { label: "Sentinel", className: "mode-sentinel" }, "911": { label: "Emergency", className: "mode-emergency" },
 };
-
 const SKINS = [["desk","Desk"],["ledger","Ledger"],["phosphor","Phosphor"],["night-study","Night Study"],["fireplace","Fireplace"],["drafting-table","Drafting Table"],["cartographer","Cartographer"],["letterpress","Letterpress"],["tron","Tron"],["jarvis","Jarvis"]];
 const MODELS = [["cheap","Cheap"],["smart","Smart"],["gemini","Gemini"],["deepseek","DeepSeek"],["qwen","Qwen"]];
 const TIME_FORMATTER = new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -93,6 +73,17 @@ function Chat() {
     })();
     return () => { cancelled = true; };
   }, [sessionId, session?.access_token, authHeader]);
+  useEffect(() => {
+    if (!session?.access_token) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await axios.get(`${API}/cybrary/items`, { headers: authHeader });
+        if (!cancelled) setCybraryItems((r.data.items || []).map((item) => ({ ...item, id: item.id || item.item_id, type: item.mime_type || item.type || item.kind })));
+      } catch (_) { /* Cybrary backend may not be wired yet. */ }
+    })();
+    return () => { cancelled = true; };
+  }, [session?.access_token, authHeader]);
   useEffect(() => { if (rkScrollRef.current) rkScrollRef.current.scrollTop = rkScrollRef.current.scrollHeight; if (plainScrollRef.current) plainScrollRef.current.scrollTop = plainScrollRef.current.scrollHeight; }, [messages, sending, doubleMode]);
   useEffect(() => { if (!isAdmin && viewMode !== "single") setViewMode("single"); }, [isAdmin, viewMode]);
   useEffect(() => {
@@ -112,15 +103,29 @@ function Chat() {
   const clearLocalChat = () => setMessages([]);
   const toggleSpeech = () => { if (!speechSupported || !recognitionRef.current) return; try { if (listening) recognitionRef.current.stop(); else { speechBaseRef.current = text; recognitionRef.current.start(); } } catch (_) {} };
   const openFilePicker = () => fileInputRef.current?.click();
-  const attachFile = (event) => {
+  const attachFile = async (event) => {
     const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
-    const item = { id: `cyb-${Date.now()}`, name: file.name, size: file.size, type: file.type || "file", source: "upload", created_at: nowIso(), status: "local", file };
-    setCybraryItems((items) => [item, ...items]); setAttachedItem(item); setFileStatus(`${file.name} added to Cybrary`); window.setTimeout(() => setFileStatus(""), 2400);
+    const localItem = { id: `cyb-local-${Date.now()}`, name: file.name, size: file.size, type: file.type || "file", source: "upload", created_at: nowIso(), status: "local", file };
+    setFileStatus(`${file.name} entering Cybrary…`);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const r = await axios.post(`${API}/cybrary/upload`, form, { headers: { ...authHeader, "Content-Type": "multipart/form-data" }, timeout: 45000 });
+      const saved = { ...r.data, id: r.data.id || r.data.item_id, type: r.data.mime_type || r.data.type || r.data.kind, status: r.data.status || "stored" };
+      setCybraryItems((items) => [saved, ...items.filter((item) => item.id !== saved.id)]);
+      setAttachedItem(saved);
+      setFileStatus(`${file.name} stored in Cybrary`);
+    } catch (_) {
+      setCybraryItems((items) => [localItem, ...items]);
+      setAttachedItem(localItem);
+      setFileStatus(`${file.name} staged locally for Cybrary`);
+    }
+    window.setTimeout(() => setFileStatus(""), 2400);
   };
   const send = async () => {
     const msg = text.trim(); if ((!msg && !attachedItem) || sending) return;
     const requestDouble = doubleMode; const userId = `user-${Date.now()}`; const assistantId = `assistant-${Date.now() + 1}`; const userTs = nowIso();
-    const attachment = attachedItem ? { id: attachedItem.id, name: attachedItem.name, size: attachedItem.size, type: attachedItem.type, source: "cybrary" } : null;
+    const attachment = attachedItem ? { id: attachedItem.id, name: attachedItem.name, size: attachedItem.size, type: attachedItem.type || attachedItem.mime_type, source: "cybrary", status: attachedItem.status } : null;
     const outbound = attachment ? `${msg || "Please review the Cybrary item."}\n\n[Cybrary item attached: ${attachment.name} · ${formatFileSize(attachment.size)} · ${attachment.type} · ${attachment.id}]` : msg;
     setSending(true); setText(""); setAttachedItem(null); setMessages((m) => [...m, { id: userId, role: "user", content: msg || "Cybrary item attached", ts: userTs, attachment }]);
     try {
@@ -145,7 +150,7 @@ function Chat() {
   const fmtTs = (iso) => formatTimeLabel(iso);
   const formatThread = () => pairs.map((p) => [p.user && `[${fmtTs(p.userTs)}]\nYou: ${p.user}`, p.userAttachment && `[Cybrary item: ${p.userAttachment.name} · ${formatFileSize(p.userAttachment.size)}]`, p.plain && `[${fmtTs(p.assistantTs)}]\nPLAIN: ${p.plain}`, p.assistant && `[${fmtTs(p.assistantTs)}]\nBRUNEL: ${p.assistant}`].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
   const copyThread = async () => { await navigator.clipboard.writeText(formatThread()); setCopiedKey("thread"); setTimeout(() => setCopiedKey(null), 1200); };
-  const renderCybraryChip = (item) => item && <div className="attachment-chip"><Paperclip size={12} /><span>{item.name}</span><small>{formatFileSize(item.size)}</small></div>;
+  const renderCybraryChip = (item) => item && <div className="attachment-chip"><Paperclip size={12} /><span>{item.name}</span><small>{formatFileSize(item.size || 0)}</small></div>;
   const renderPanelPairs = (kind) => <div className="chat-body" ref={kind === "plain" ? plainScrollRef : rkScrollRef}>{pairs.length === 0 ? <div className="empty-state">Good afternoon. What are we working on?</div> : pairs.map((p, i) => <div key={i} className="pair">{p.user && <div className="bubble bubble-user">{p.user}{renderCybraryChip(p.userAttachment)}</div>}{kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}{kind === "rk" && p.assistant !== null && <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>{p.assistant}</div>}{(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}</div>)}{sending && <div className="thinking">considering</div>}</div>;
   const renderSinglePairs = () => <div className="chat-body" ref={rkScrollRef}>{pairs.length === 0 ? <div className="empty-state">Good afternoon. What are we working on?</div> : pairs.map((p, i) => <div key={i} className="pair">{p.user && <div className="bubble bubble-user">{p.user}{renderCybraryChip(p.userAttachment)}</div>}{p.assistant !== null && <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>{p.assistant}</div>}{(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}</div>)}{sending && <div className="thinking">considering</div>}</div>;
   const drawerVisible = drawerKind || drawerClosing;
@@ -153,7 +158,7 @@ function Chat() {
 
   return <div className="app" data-skin={skin}>
     <div className="topbar"><button className="drawer-toggle cybrary-toggle" onClick={() => openDrawer("cybrary")} aria-label="open Cybrary" title="Open Cybrary"><Library size={16} /></button><div className="brand"><div className="brand-name">BRUNEL</div><div className="brand-sub">The Builder</div></div><div className="topbar-right"><button className="drawer-toggle" onClick={() => openDrawer("works")} aria-label="open controls" title="Open controls"><Settings size={16} /></button></div></div>
-    {drawerVisible && <><div className={`drawer-backdrop ${drawerClass}`} onClick={closeDrawer} />{drawerKind === "cybrary" ? <div className={`drawer cybrary-drawer ${drawerClass}`}><div className="drawer-title"><span>Cybrary</span><button className="drawer-close" onClick={closeDrawer} aria-label="close Cybrary"><X size={16} /></button></div><div className="drawer-section"><div className="drawer-label">Current Session</div><div className="drawer-note">Uploads and generated artifacts land here first.</div></div><div className="drawer-section"><div className="drawer-label">Items</div>{cybraryItems.length === 0 ? <div className="drawer-note">No Cybrary items yet.</div> : <div className="cybrary-list">{cybraryItems.map((item) => <button key={item.id} className="cybrary-item" onClick={() => setAttachedItem(item)}><span>{item.name}</span><small>{formatFileSize(item.size)} · {item.type}</small></button>)}</div>}</div><div className="drawer-section"><div className="drawer-label">Next organs</div><div className="drawer-note">Backend storage, ingestion, image vision, document extraction, and page flipper.</div></div></div> : <div className={`drawer works-drawer ${drawerClass}`}><div className="drawer-title"><span>Works</span><button className="drawer-close" onClick={closeDrawer} aria-label="close controls"><X size={16} /></button></div><div className="drawer-section"><div className="drawer-label">Account</div><span className="session-id">{user?.email || "—"}</span></div><div className="drawer-section"><div className="drawer-label">Model</div><select className="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} disabled={sending} aria-label="select runtime model">{MODELS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="drawer-section"><div className="drawer-label">Skin</div><select className="model-select" value={skin} onChange={(e) => setSkin(e.target.value)} aria-label="select skin">{SKINS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>{isAdmin && <div className="drawer-section"><div className="drawer-label">View</div><div className="view-toggle"><button className={viewMode === "single" ? "active" : ""} onClick={() => setViewMode("single")}>Single</button><button className={viewMode === "double" ? "active" : ""} onClick={() => setViewMode("double")}>Double</button></div></div>}<div className="drawer-section"><div className="drawer-label">Archive</div><div className="drawer-row"><button className="reset-btn" onClick={copyThread} disabled={pairs.length === 0}><ClipboardCopy size={11} /> {copiedKey === "thread" ? "Copied" : "Copy thread"}</button><button className="reset-btn" onClick={clearLocalChat}><Trash2 size={11} /> Clear</button></div></div><div className="drawer-section"><div className="drawer-label">Admin</div><div className="drawer-row">{isAdmin && <button className="reset-btn" onClick={() => navigate("/brunel/admin")}><Shield size={11} /> Admin panel</button>}<button className="reset-btn" onClick={() => signOut()}><LogOut size={11} /> Sign out</button></div></div></div>}</>}
+    {drawerVisible && <><div className={`drawer-backdrop ${drawerClass}`} onClick={closeDrawer} />{drawerKind === "cybrary" ? <div className={`drawer cybrary-drawer ${drawerClass}`}><div className="drawer-title"><span>Cybrary</span><button className="drawer-close" onClick={closeDrawer} aria-label="close Cybrary"><X size={16} /></button></div><div className="drawer-section"><div className="drawer-label">Current Session</div><div className="drawer-note">Uploads and generated artifacts land here first.</div></div><div className="drawer-section"><div className="drawer-label">Items</div>{cybraryItems.length === 0 ? <div className="drawer-note">No Cybrary items yet.</div> : <div className="cybrary-list">{cybraryItems.map((item) => <button key={item.id || item.item_id} className="cybrary-item" onClick={() => setAttachedItem(item)}><span>{item.name}</span><small>{formatFileSize(item.size || 0)} · {item.type || item.kind || item.mime_type}</small></button>)}</div>}</div><div className="drawer-section"><div className="drawer-label">Next organs</div><div className="drawer-note">Backend router exists. Next: wire router, inject extracted content, then vision/document ingestion.</div></div></div> : <div className={`drawer works-drawer ${drawerClass}`}><div className="drawer-title"><span>Works</span><button className="drawer-close" onClick={closeDrawer} aria-label="close controls"><X size={16} /></button></div><div className="drawer-section"><div className="drawer-label">Account</div><span className="session-id">{user?.email || "—"}</span></div><div className="drawer-section"><div className="drawer-label">Model</div><select className="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} disabled={sending} aria-label="select runtime model">{MODELS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div><div className="drawer-section"><div className="drawer-label">Skin</div><select className="model-select" value={skin} onChange={(e) => setSkin(e.target.value)} aria-label="select skin">{SKINS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>{isAdmin && <div className="drawer-section"><div className="drawer-label">View</div><div className="view-toggle"><button className={viewMode === "single" ? "active" : ""} onClick={() => setViewMode("single")}>Single</button><button className={viewMode === "double" ? "active" : ""} onClick={() => setViewMode("double")}>Double</button></div></div>}<div className="drawer-section"><div className="drawer-label">Archive</div><div className="drawer-row"><button className="reset-btn" onClick={copyThread} disabled={pairs.length === 0}><ClipboardCopy size={11} /> {copiedKey === "thread" ? "Copied" : "Copy thread"}</button><button className="reset-btn" onClick={clearLocalChat}><Trash2 size={11} /> Clear</button></div></div><div className="drawer-section"><div className="drawer-label">Admin</div><div className="drawer-row">{isAdmin && <button className="reset-btn" onClick={() => navigate("/brunel/admin")}><Shield size={11} /> Admin panel</button>}<button className="reset-btn" onClick={() => signOut()}><LogOut size={11} /> Sign out</button></div></div></div>}</>}
     <div className={doubleMode ? "chat-grid double" : "chat-grid single"}>{doubleMode && <div className="panel panel-plain"><div className="panel-title panel-title-plain"><div className="main-title">PLAIN</div><div className="sub-title">Control response</div></div>{renderPanelPairs("plain")}</div>}<div className={doubleMode ? "panel panel-rk" : "panel panel-rk solo"}>{doubleMode && <div className="panel-title panel-title-rk"><div className="main-title"><span>BRUNEL</span><span className="powered">Powered by ARCHEngine</span></div><div className="sub-title">Artificial Behavioral Intelligence</div></div>}{doubleMode ? renderPanelPairs("rk") : renderSinglePairs()}</div></div>
     <div className="panel-input shared-seed-box"><div className="speech-status">{fileStatus || (speechSupported ? "" : "speech input unsupported here")}</div>{attachedItem && <div className="attachment-row">{renderCybraryChip(attachedItem)}<button type="button" onClick={() => setAttachedItem(null)} aria-label="remove attached Cybrary item">×</button></div>}<input ref={fileInputRef} className="hidden-file-input" type="file" onChange={attachFile} /><div className="input-row"><button className="file-btn" onClick={openFilePicker} disabled={sending} aria-label="add to Cybrary" title="Add to Cybrary"><Paperclip size={14} /></button><textarea className="input" placeholder={doubleMode ? "Seed the same prompt..." : "What are we working on?"} value={text} disabled={sending} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} /><button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleSpeech} disabled={sending} aria-label={listening ? "stop voice input" : "start voice input"} title={listening ? "Stop voice input" : "Start voice input"}>{listening ? <MicOff size={14} /> : <Mic size={14} />}</button><button className="send" onClick={send} disabled={sending || (!text.trim() && !attachedItem)} aria-label="send"><Send size={14} /></button></div></div>
     <div className="footnote"><span>BRUNEL · An ArchePersona product</span><span className="footnote-tag">Powered by ARCHE</span></div>
