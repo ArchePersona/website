@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import './arche-home.css';
 import heroImage from './images/file_000000004274720c9ccd5c5a01ca599a.png';
 import logoImage from './images/file_00000000f5f0720c904985f294fd517d.png';
@@ -8,17 +9,17 @@ export default function ArcheHomepage() {
       <section className="ap-hero" aria-label="ArchePersona hero">
         <img className="ap-hero-image" src={heroImage} alt="Chimera and tower at sunset" />
         <img className="ap-hero-logo" src={logoImage} alt="ArchePersona" />
-        <a className="ap-zone ap-zone-left" href="/brunel/disclaimer" aria-label="Character" />
-        <a className="ap-zone ap-zone-right" href="/consequence" aria-label="Consequence" />
+        <Link className="ap-zone ap-zone-left" to="/brunel/disclaimer" aria-label="Character" />
+        <Link className="ap-zone ap-zone-right" to="/consequence" aria-label="Consequence" />
       </section>
 
       <section className="ap-statement" aria-label="ArchePersona statement">
         <div className="ap-statement-line">Behavioral infrastructure</div>
         <div className="ap-statement-for">for</div>
         <div className="ap-duality">
-          <a href="/brunel/disclaimer">CHARACTER</a>
+          <Link to="/brunel/disclaimer">CHARACTER</Link>
           <span>&amp;</span>
-          <a href="/consequence">CONSEQUENCE</a>
+          <Link to="/consequence">CONSEQUENCE</Link>
         </div>
       </section>
 
@@ -30,11 +31,11 @@ export default function ArcheHomepage() {
 
       <div className="ap-bottom">
         <nav className="ap-nav" aria-label="ArchePersona navigation">
-          <a href="/about">ABOUT</a>
+          <Link to="/about">ABOUT</Link>
           <span className="ap-nav-separator" aria-hidden="true">|</span>
-          <a href="/archengine">ARCHEngine</a>
+          <Link to="/archengine">ARCHEngine</Link>
           <span className="ap-nav-separator" aria-hidden="true">|</span>
-          <a href="/contact">CONTACT</a>
+          <Link to="/contact">CONTACT</Link>
         </nav>
 
         <footer className="ap-footer">Powered by ARCHEngine</footer>
