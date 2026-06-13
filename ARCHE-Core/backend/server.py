@@ -68,12 +68,13 @@ _emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
 stt_client: OpenAISpeechToText | None = OpenAISpeechToText(api_key=_emergent_key) if _emergent_key else None
 
 MEMORY_TURN_CAP = 200
-PROMPT_HISTORY_TURNS = 8
+PROMPT_HISTORY_TURNS = 3
 FACTS_IN_PROMPT = 6
 SESSION_TTL_DAYS = 90
 SESSION_TTL_SECONDS = SESSION_TTL_DAYS * 24 * 60 * 60
 RESPONSE_MAX_TOKENS = 700
 CYBRARY_PROMPT_CHAR_LIMIT = 12000
+SYNOPSIS_TURNS = 8
 URL_ONLY_RE = re.compile(r"^(https?://|www\.)[^\s]+$", re.IGNORECASE)
 
 ADMIN_EMAILS: set[str] = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
@@ -97,6 +98,8 @@ class ChatRequest(BaseModel):
     message: str
     target: str = Field(default="both", description="rk_only | plain_only | both")
     cybrary_item_ids: list[str] = Field(default_factory=list)
+    client_ts: str | None = None
+    client_timezone: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -133,6 +136,7 @@ async def get_or_create_session(session_id: str) -> dict:
         "last_mode": "NORMAL",
         "last_flags": [],
         "topic_entropy": {},
+        "continuity_synopsis": "No prior session synopsis yet.",
     }
     await db.sessions.insert_one(dict(doc))
     return doc
@@ -141,6 +145,104 @@ async def get_or_create_session(session_id: str) -> dict:
 async def save_session(session: dict) -> None:
     session["updated"] = datetime.now(timezone.utc)
     await db.sessions.replace_one({"session_id": session["session_id"]}, {k: v for k, v in session.items() if k != "_id"}, upsert=True)
+
+
+def parse_iso_datetime(value: Any) -> datetime | None:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if not value or not isinstance(value, str):
+        return None
+    try:
+        cleaned = value.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(cleaned)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+def human_elapsed(delta_seconds: float | None) -> str:
+    if delta_seconds is None:
+        return "unknown"
+    seconds = max(0, int(delta_seconds))
+    if seconds < 60:
+        return f"{seconds} seconds"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes} minutes"
+    hours = minutes // 60
+    if hours < 24:
+        rem = minutes % 60
+        return f"{hours} hours" if rem == 0 else f"{hours} hours {rem} minutes"
+    days = hours // 24
+    rem_hours = hours % 24
+    return f"{days} days" if rem_hours == 0 else f"{days} days {rem_hours} hours"
+
+
+def compact_text(value: str, limit: int = 180) -> str:
+    text = re.sub(r"\s+", " ", (value or "")).strip()
+    return text[: limit - 1] + "…" if len(text) > limit else text
+
+
+def build_recent_synopsis(history: list[dict], prior_synopsis: str | None = None) -> str:
+    if not history:
+        return prior_synopsis or "No prior user/Brunel exchange is recorded for this session."
+    lines: list[str] = []
+    for turn in history[-SYNOPSIS_TURNS:]:
+        user_text = compact_text(turn.get("user", ""), 140)
+        assistant_text = compact_text(turn.get("assistant", ""), 140)
+        state = turn.get("state") or "unknown"
+        mode = turn.get("mode") or "unknown"
+        if user_text:
+            lines.append(f"User: {user_text}")
+        if assistant_text:
+            lines.append(f"Brunel [{state}/{mode}]: {assistant_text}")
+    synopsis = "\n".join(lines[-12:]).strip()
+    return synopsis or prior_synopsis or "No usable continuity synopsis yet."
+
+
+def build_temporal_packet(
+    *,
+    now: datetime,
+    session: dict,
+    req: ChatRequest,
+    previous_state: str,
+    previous_mode: str,
+    current_state: str,
+    current_mode: str,
+    zone: str,
+    cybrary_items: list[dict],
+) -> str:
+    history = session.get("rk_history", []) or []
+    last_turn = history[-1] if history else None
+    last_ts = parse_iso_datetime(last_turn.get("ts") if last_turn else None)
+    elapsed = human_elapsed((now - last_ts).total_seconds() if last_ts else None)
+    client_time = req.client_ts or "not supplied"
+    timezone_label = req.client_timezone or "not supplied"
+    state_delta = "unchanged" if previous_state == current_state else f"{previous_state} -> {current_state}"
+    mode_delta = "unchanged" if previous_mode == current_mode else f"{previous_mode} -> {current_mode}"
+    artifact_lines = []
+    for item in cybrary_items[:6]:
+        artifact_lines.append(f"- {item.get('name')} [{item.get('kind')} / {item.get('status')}]")
+    artifact_text = "\n".join(artifact_lines) if artifact_lines else "- none attached to this turn"
+    synopsis = build_recent_synopsis(history, session.get("continuity_synopsis"))
+    return (
+        "TEMPORAL SESSION PACKET\n"
+        f"Server current time UTC: {now.isoformat()}\n"
+        f"Client displayed timestamp: {client_time}\n"
+        f"Client timezone label: {timezone_label}\n"
+        f"Previous interaction timestamp: {last_ts.isoformat() if last_ts else 'none recorded'}\n"
+        f"Elapsed silence since previous interaction: {elapsed}\n"
+        f"Previous state/mode: {previous_state} / {previous_mode}\n"
+        f"Current inferred state/mode/zone: {current_state} / {current_mode} / {zone}\n"
+        f"State drift: {state_delta}\n"
+        f"Mode drift: {mode_delta}\n"
+        "Continuity synopsis, not raw transcript:\n"
+        f"{synopsis}\n"
+        "Active Cybrary artifacts this turn:\n"
+        f"{artifact_text}\n"
+        "Temporal doctrine: ARCHE is time-aware. Use current time, prior interaction time, elapsed silence, state drift, and synopsis as working context. "
+        "If timestamps are visible or supplied in the packet, do not deny awareness of them. Answer from session evidence before claiming limitation."
+    )
 
 
 def normalize_url_reference(value: str) -> str | None:
@@ -243,9 +345,12 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     if req.target not in ("rk_only", "plain_only", "both"):
         raise HTTPException(status_code=400, detail="invalid target")
 
+    now = datetime.now(timezone.utc)
     user_id: str = current_user["id"]
     user_jwt: str = current_user["token"]
     session = await get_or_create_session(user_id)
+    previous_state = session.get("last_state", "unknown")
+    previous_mode = session.get("last_mode", "unknown")
 
     cybrary_item_ids = list(req.cybrary_item_ids)
     auto_url = normalize_url_reference(req.message) if not cybrary_item_ids else None
@@ -254,9 +359,6 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         cybrary_item_ids.append(url_item["item_id"])
 
     cybrary_context, cybrary_items = await build_cybrary_context(user_id, cybrary_item_ids)
-    llm_message = req.message
-    if cybrary_context:
-        llm_message = f"{req.message}\n\nCybrary context available to Brunel:\n{cybrary_context}"
 
     flags = run_sniffers(req.message)
     chips = public_flag_chips(flags)
@@ -274,6 +376,21 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     if forced_mode and forced_mode in VALID_MODES:
         mode = forced_mode
 
+    temporal_packet = build_temporal_packet(
+        now=now,
+        session=session,
+        req=req,
+        previous_state=previous_state,
+        previous_mode=previous_mode,
+        current_state=state,
+        current_mode=mode,
+        zone=zone,
+        cybrary_items=cybrary_items,
+    )
+    llm_message = f"{req.message}\n\n{temporal_packet}"
+    if cybrary_context:
+        llm_message = f"{llm_message}\n\nCybrary context available to Brunel:\n{cybrary_context}"
+
     rk_text: str | None = None
     plain_text: str | None = None
     rk_history = session["rk_history"]
@@ -286,6 +403,9 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         "\n\nCybrary doctrine: Chat owns conversation; Cybrary owns artifacts. "
         "Do not describe missing tools as permanent personal inability. Say the current demo session has not enabled the relevant organ, "
         "or that the Cybrary item exists but has not yet been inspected."
+        "\n\nTemporal doctrine: ARCHE is time-aware. Prefer the temporal session packet over raw transcript. "
+        "Use elapsed silence, current timestamp, previous state/mode, current state/mode, state drift, active artifacts, and continuity synopsis. "
+        "Never deny awareness of timestamps or session timing when they are supplied in the packet or visible in the conversation."
     )
 
     try:
@@ -301,7 +421,24 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
 
     cybrary_public = [{"item_id": i.get("item_id"), "name": i.get("name"), "kind": i.get("kind"), "mime_type": i.get("mime_type"), "size": i.get("size"), "status": i.get("status"), "url": i.get("url")} for i in cybrary_items]
     if rk_text is not None:
-        session["rk_history"].append({"user": req.message, "assistant": rk_text, "ts": datetime.now(timezone.utc).isoformat(), "state": state, "zone": zone, "mode": mode, "weights": new_signals, "flags": chips, "tribunal": tribunal, "cybrary_item_ids": cybrary_item_ids, "cybrary_items": cybrary_public})
+        session["rk_history"].append({
+            "user": req.message,
+            "assistant": rk_text,
+            "ts": now.isoformat(),
+            "client_ts": req.client_ts,
+            "client_timezone": req.client_timezone,
+            "elapsed_since_previous": temporal_packet.split("Elapsed silence since previous interaction: ", 1)[1].split("\n", 1)[0],
+            "state": state,
+            "zone": zone,
+            "mode": mode,
+            "previous_state": previous_state,
+            "previous_mode": previous_mode,
+            "weights": new_signals,
+            "flags": chips,
+            "tribunal": tribunal,
+            "cybrary_item_ids": cybrary_item_ids,
+            "cybrary_items": cybrary_public,
+        })
         if supabase_configured():
             existing_texts = {m.get("memory_text") for m in sb_memories}
             for fact in extract_facts(req.message):
@@ -314,9 +451,10 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         session["last_mode"] = mode
         session["last_flags"] = chips
         session["topic_entropy"] = topic_entropy
+        session["continuity_synopsis"] = build_recent_synopsis(session.get("rk_history", []), session.get("continuity_synopsis"))
 
     if plain_text is not None:
-        session["plain_history"].append({"user": req.message, "assistant": plain_text, "ts": datetime.now(timezone.utc).isoformat(), "cybrary_item_ids": cybrary_item_ids})
+        session["plain_history"].append({"user": req.message, "assistant": plain_text, "ts": now.isoformat(), "client_ts": req.client_ts, "cybrary_item_ids": cybrary_item_ids})
 
     await save_session(session)
     return ChatResponse(turn=len(session["rk_history"]), rk_response=rk_text, plain_response=plain_text)
@@ -333,7 +471,7 @@ async def get_session(session_id: str, current_user: dict = Depends(get_current_
     if session_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="forbidden")
     session = await get_or_create_session(session_id)
-    return SessionState(session_id=session["session_id"], rk_history=[{"user": t.get("user", ""), "assistant": t.get("assistant", ""), "attachment": (t.get("cybrary_items") or [None])[0]} for t in session.get("rk_history", [])])
+    return SessionState(session_id=session["session_id"], rk_history=[{"user": t.get("user", ""), "assistant": t.get("assistant", ""), "ts": t.get("ts"), "client_ts": t.get("client_ts"), "attachment": (t.get("cybrary_items") or [None])[0]} for t in session.get("rk_history", [])])
 
 
 @api.get("/me")
