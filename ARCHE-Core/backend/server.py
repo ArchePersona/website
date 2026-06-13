@@ -48,6 +48,11 @@ from supabase_helper import (
     insert_memory,
     supabase_configured,
 )
+from time_pressure import (
+    apply_time_decay_to_topic_entropy,
+    compute_time_entropy_pressure,
+    suggest_time_state_bias,
+)
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -271,7 +276,8 @@ def derive_pressure(session: dict, now: datetime) -> dict:
     momentum = derive_momentum(elapsed_seconds, len(history[-6:]))
     relationship_stage, relationship_age_days = derive_relationship_stage(first_seen, now, prior_turn_count)
     trust = derive_trust(int(session.get("trust") or 5), cooling, prior_turn_count)
-    return {
+    time_pressure = compute_time_entropy_pressure(elapsed_seconds, cooling=cooling, momentum=momentum)
+    pressure = {
         "elapsed_seconds": elapsed_seconds,
         "elapsed_since_previous": human_elapsed(elapsed_seconds),
         "last_interaction": last_ts.isoformat() if last_ts else None,
@@ -282,6 +288,9 @@ def derive_pressure(session: dict, now: datetime) -> dict:
         "relationship_age_days": relationship_age_days,
         "turn_count": prior_turn_count + 1,
     }
+    pressure.update(time_pressure)
+    pressure["state_bias"] = suggest_time_state_bias(time_pressure)
+    return pressure
 
 
 def build_temporal_packet(
@@ -320,6 +329,10 @@ def build_temporal_packet(
         f"Momentum: {pressure['momentum']}\n"
         f"Cooling: {pressure['cooling']}\n"
         f"Trust: {pressure['trust']}/10\n"
+        f"Time decay: {pressure.get('time_decay', 0.0)}\n"
+        f"Entropy pressure: {pressure.get('entropy_pressure', 0.0)}\n"
+        f"Entropy band: {pressure.get('entropy_band', 'stable')}\n"
+        f"Time state bias: {pressure.get('state_bias', 'maintain')}\n"
         f"Previous state/mode: {previous_state} / {previous_mode}\n"
         f"Current inferred state/mode/zone: {current_state} / {current_mode} / {zone}\n"
         f"State drift: {state_delta}\n"
@@ -328,7 +341,7 @@ def build_temporal_packet(
         f"{synopsis}\n"
         "Active Cybrary artifacts this turn:\n"
         f"{artifact_text}\n"
-        "Temporal doctrine: ARCHE is time-aware. Use current time, prior interaction time, elapsed silence, momentum, cooling, trust, relationship age, state drift, and synopsis as working context. "
+        "Temporal doctrine: ARCHE is time-aware. Use current time, prior interaction time, elapsed silence, momentum, cooling, trust, relationship age, time decay, entropy pressure, state bias, state drift, and synopsis as working context. "
         "If timestamps are visible or supplied in the packet, do not deny awareness of them. Answer from session evidence before claiming limitation."
     )
 
@@ -486,7 +499,8 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     rk_history = session["rk_history"]
     sb_memories = fetch_recent_memories(user_jwt=user_jwt, user_id=user_id) if supabase_configured() else []
     memory_strings = [m.get("memory_text", "") for m in sb_memories if m.get("memory_text")]
-    topic_entropy = update_topic_entropy(session.get("topic_entropy", {}) or {}, req.message, agents=new_signals)
+    raw_topic_entropy = update_topic_entropy(session.get("topic_entropy", {}) or {}, req.message, agents=new_signals)
+    topic_entropy = apply_time_decay_to_topic_entropy(raw_topic_entropy, pressure)
     working_memory_synopsis = build_working_memory_synopsis(topic_entropy)
     rk_system_prompt = build_rk_system_prompt(agents=new_signals, state=state, zone=zone, mode=mode, directive=directive, flags=flags, history_count=len(rk_history), facts=memory_strings, working_memory=working_memory_synopsis)
     rk_system_prompt += (
@@ -494,7 +508,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         "Do not describe missing tools as permanent personal inability. Say the current demo session has not enabled the relevant organ, "
         "or that the Cybrary item exists but has not yet been inspected."
         "\n\nTemporal doctrine: ARCHE is time-aware. Prefer the temporal session packet over raw transcript. "
-        "Use elapsed silence, current timestamp, previous state/mode, current state/mode, state drift, active artifacts, continuity synopsis, momentum, cooling, trust, relationship age, and turn count. "
+        "Use elapsed silence, current timestamp, previous state/mode, current state/mode, state drift, active artifacts, continuity synopsis, momentum, cooling, trust, relationship age, turn count, time decay, entropy pressure, entropy band, and time state bias. "
         "Never deny awareness of timestamps or session timing when they are supplied in the packet or visible in the conversation."
     )
 
@@ -524,6 +538,10 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
             "relationship_stage": pressure["relationship_stage"],
             "relationship_age_days": pressure["relationship_age_days"],
             "turn_count": pressure["turn_count"],
+            "time_decay": pressure.get("time_decay"),
+            "entropy_pressure": pressure.get("entropy_pressure"),
+            "entropy_band": pressure.get("entropy_band"),
+            "state_bias": pressure.get("state_bias"),
             "state": state,
             "zone": zone,
             "mode": mode,
@@ -554,6 +572,10 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         session["trust"] = pressure["trust"]
         session["relationship_stage"] = pressure["relationship_stage"]
         session["relationship_age_days"] = pressure["relationship_age_days"]
+        session["time_decay"] = pressure.get("time_decay")
+        session["entropy_pressure"] = pressure.get("entropy_pressure")
+        session["entropy_band"] = pressure.get("entropy_band")
+        session["state_bias"] = pressure.get("state_bias")
 
     if plain_text is not None:
         session["plain_history"].append({"user": req.message, "assistant": plain_text, "ts": now.isoformat(), "client_ts": req.client_ts, "cybrary_item_ids": cybrary_item_ids})
@@ -573,7 +595,7 @@ async def get_session(session_id: str, current_user: dict = Depends(get_current_
     if session_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="forbidden")
     session = await get_or_create_session(session_id)
-    return SessionState(session_id=session["session_id"], rk_history=[{"user": t.get("user", ""), "assistant": t.get("assistant", ""), "ts": t.get("ts"), "client_ts": t.get("client_ts"), "elapsed_since_previous": t.get("elapsed_since_previous"), "momentum": t.get("momentum"), "cooling": t.get("cooling"), "trust": t.get("trust"), "attachment": (t.get("cybrary_items") or [None])[0]} for t in session.get("rk_history", [])])
+    return SessionState(session_id=session["session_id"], rk_history=[{"user": t.get("user", ""), "assistant": t.get("assistant", ""), "ts": t.get("ts"), "client_ts": t.get("client_ts"), "elapsed_since_previous": t.get("elapsed_since_previous"), "momentum": t.get("momentum"), "cooling": t.get("cooling"), "trust": t.get("trust"), "time_decay": t.get("time_decay"), "entropy_pressure": t.get("entropy_pressure"), "entropy_band": t.get("entropy_band"), "state_bias": t.get("state_bias"), "attachment": (t.get("cybrary_items") or [None])[0]} for t in session.get("rk_history", [])])
 
 
 @api.get("/session-packet")
@@ -601,6 +623,7 @@ async def get_session_packet(current_user: dict = Depends(get_current_user)) -> 
         "mode": session.get("last_mode"),
         "zone": session.get("last_zone"),
         "continuity_synopsis": session.get("continuity_synopsis"),
+        "topic_entropy": session.get("topic_entropy"),
     }
 
 
