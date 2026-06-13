@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Send, LogOut, Shield, ClipboardCopy, Mic, MicOff, Paperclip, Trash2, Menu, X } from "lucide-react";
+import { Send, LogOut, Shield, ClipboardCopy, Mic, MicOff, Paperclip, Trash2, Settings, X } from "lucide-react";
 import { useAuth } from "./AuthContext.jsx";
 import "./App.css";
 import "./skins/skin-tokens.css";
@@ -300,7 +300,7 @@ function Chat() {
     <div className="app" data-skin={skin}>
       <div className="topbar">
         <div className="brand"><div className="brand-name">BRUNEL</div><div className="brand-sub">The Builder</div></div>
-        <div className="topbar-right"><button className="drawer-toggle" onClick={() => setDrawerOpen(true)} aria-label="open menu"><Menu size={16} /></button></div>
+        <div className="topbar-right"><button className="drawer-toggle" onClick={() => setDrawerOpen(true)} aria-label="open controls" title="Open controls"><Settings size={16} /></button></div>
       </div>
 
       {drawerOpen && <><div className="drawer-backdrop" onClick={() => setDrawerOpen(false)} /><div className="drawer">
