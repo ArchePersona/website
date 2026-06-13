@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 import './styles.css';
 import ArcheHomepage from './ArcheHomepage.jsx';
+import InfoPage from './InfoPage.jsx';
 import VHoldPage from './VHoldPage.jsx';
 
 import { AuthProvider } from './brunel/AuthContext.jsx';
@@ -19,12 +20,12 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<ArcheHomepage />} />
-          <Route path="/creations" element={<ArcheHomepage />} />
+          <Route path="/creations" element={<Navigate to="/brunel/disclaimer" replace />} />
           <Route path="/consequence" element={<VHoldPage />} />
-          <Route path="/oversight" element={<VHoldPage />} />
-          <Route path="/archengine" element={<ArcheHomepage />} />
-          <Route path="/about" element={<ArcheHomepage />} />
-          <Route path="/contact" element={<ArcheHomepage />} />
+          <Route path="/oversight" element={<Navigate to="/consequence" replace />} />
+          <Route path="/archengine" element={<InfoPage page="archengine" />} />
+          <Route path="/about" element={<InfoPage page="about" />} />
+          <Route path="/contact" element={<InfoPage page="contact" />} />
           <Route path="/brunel/login" element={<Login />} />
           <Route path="/brunel/disclaimer" element={<Disclaimer />} />
           <Route
