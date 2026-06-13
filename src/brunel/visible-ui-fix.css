@@ -2,6 +2,7 @@
 
 .topbar {
   align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
   flex-direction: row !important;
 }
@@ -11,7 +12,17 @@
   justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
-  margin-left: auto;
+  margin-left: 0;
+}
+
+.brand {
+  flex: 1 1 auto;
+  text-align: center;
+  align-items: center;
+}
+
+.cybrary-toggle {
+  margin-right: 0;
 }
 
 .topbar .session-id,
@@ -43,14 +54,8 @@
   letter-spacing: 0;
 }
 
-.view-toggle button:first-child::after {
-  content: "S";
-}
-
-.view-toggle button:last-child::after {
-  content: "D";
-}
-
+.view-toggle button:first-child::after { content: "S"; }
+.view-toggle button:last-child::after { content: "D"; }
 .view-toggle button::after {
   font-family: var(--ui-font);
   font-size: 13px;
@@ -68,17 +73,10 @@
   opacity: 0;
   transition: opacity 240ms ease;
 }
-
-.drawer-backdrop.open {
-  opacity: 1;
-}
-
-.drawer-backdrop.closing {
-  opacity: 0;
-}
+.drawer-backdrop.open { opacity: 1; }
+.drawer-backdrop.closing { opacity: 0; }
 
 .drawer {
-  transform: translateX(104%);
   opacity: 0;
   transition:
     transform 240ms cubic-bezier(.22, .85, .28, 1),
@@ -86,23 +84,58 @@
   will-change: transform, opacity;
 }
 
-.drawer.open {
-  transform: translateX(0);
-  opacity: 1;
+.drawer.works-drawer { right: 0; left: auto; transform: translateX(104%); }
+.drawer.cybrary-drawer { left: 0; right: auto; transform: translateX(-104%); border-left: 0; border-right: 1px solid var(--bronze-soft); box-shadow: 12px 0 30px rgba(0,0,0,.4); }
+.drawer.open { transform: translateX(0); opacity: 1; }
+.drawer.works-drawer.closing { transform: translateX(104%); opacity: 0; }
+.drawer.cybrary-drawer.closing { transform: translateX(-104%); opacity: 0; }
+
+.drawer-note {
+  color: var(--dim);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
-.drawer.closing {
-  transform: translateX(104%);
-  opacity: 0;
+.cybrary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.speech-status {
-  display: none !important;
+.cybrary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--bronze-soft);
+  border-radius: 8px;
+  background: rgba(0,0,0,.18);
+  color: var(--ivory);
+  cursor: pointer;
+  text-align: left;
 }
 
-.shared-seed-box {
-  padding: 10px 18px 8px;
+.cybrary-item:hover {
+  background: rgba(184,118,58,.10);
 }
+
+.cybrary-item span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cybrary-item small {
+  color: var(--dim);
+  font-size: 10px;
+}
+
+.speech-status { display: none !important; }
+.shared-seed-box { padding: 10px 18px 8px; }
 
 .input-row {
   align-items: center;
@@ -151,14 +184,8 @@
 }
 
 .input-row .send,
-.input-row .mic-btn {
-  color: var(--bronze);
-}
-
-.input-row::before {
-  display: none !important;
-  content: none !important;
-}
+.input-row .mic-btn { color: var(--bronze); }
+.input-row::before { display: none !important; content: none !important; }
 
 .attachment-row {
   display: flex;
@@ -224,50 +251,30 @@
 
 @media (prefers-reduced-motion: reduce) {
   .drawer,
-  .drawer-backdrop {
-    transition: none;
-  }
+  .drawer-backdrop { transition: none; }
 }
 
 @media (max-width: 720px) {
-  .app {
-    gap: 10px;
-  }
-
+  .app { gap: 10px; }
   .topbar {
     align-items: flex-start;
     justify-content: space-between;
     padding-bottom: 10px;
   }
-
-  .brand-sub {
-    font-size: 12px;
-  }
-
-  .topbar-right {
-    margin-top: 0;
-  }
-
+  .brand-sub { font-size: 12px; }
+  .topbar-right { margin-top: 0; }
   .chat-grid.single {
     flex: 0 1 calc(100vh - 250px);
     max-height: calc(100vh - 250px);
   }
-
-  .chat-grid.single .panel.solo {
-    max-height: 100%;
-  }
-
-  .shared-seed-box {
-    padding: 8px 14px 6px;
-  }
-
+  .chat-grid.single .panel.solo { max-height: 100%; }
+  .shared-seed-box { padding: 8px 14px 6px; }
   .input-row textarea.input {
     min-width: 130px;
     padding-left: 12px;
     padding-right: 8px;
     font-size: 13px;
   }
-
   .input-row .file-btn,
   .input-row .mic-btn,
   .input-row .send {
