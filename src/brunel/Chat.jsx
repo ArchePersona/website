@@ -9,6 +9,7 @@ import "./visible-ui-fix.css";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://brunel-5lxo.onrender.com";
 const API = `${BACKEND_URL}/api`;
+const DRAWER_ANIMATION_MS = 240;
 
 const STATE_VISUALS = {
   St0: { label: "Baseline", className: "state-baseline" },
@@ -121,6 +122,7 @@ function Chat() {
   const [attachedFile, setAttachedFile] = useState(null);
   const [viewMode, setViewMode] = useState("single");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerClosing, setDrawerClosing] = useState(false);
   const [skin, setSkin] = useState(loadStoredSkin);
   const [selectedModel, setSelectedModel] = useState("cheap");
 
@@ -129,11 +131,16 @@ function Chat() {
   const fileInputRef = useRef(null);
   const rkScrollRef = useRef(null);
   const plainScrollRef = useRef(null);
+  const drawerTimerRef = useRef(null);
 
   const doubleMode = isAdmin && viewMode === "double";
   const authHeader = useMemo(() => (session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}), [session?.access_token]);
 
   useEffect(() => { try { window.localStorage.setItem("brunel-skin", skin); } catch (_) { /* noop */ } }, [skin]);
+
+  useEffect(() => () => {
+    if (drawerTimerRef.current) window.clearTimeout(drawerTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!sessionId || !session?.access_token) return;
@@ -180,6 +187,23 @@ function Chat() {
     setSpeechSupported(true);
     return () => { try { recognition.stop(); } catch (_) { /* noop */ } recognitionRef.current = null; };
   }, []);
+
+  const openDrawer = () => {
+    if (drawerTimerRef.current) window.clearTimeout(drawerTimerRef.current);
+    setDrawerClosing(false);
+    setDrawerOpen(true);
+  };
+
+  const closeDrawer = () => {
+    if (!drawerOpen || drawerClosing) return;
+    setDrawerClosing(true);
+    if (drawerTimerRef.current) window.clearTimeout(drawerTimerRef.current);
+    drawerTimerRef.current = window.setTimeout(() => {
+      setDrawerOpen(false);
+      setDrawerClosing(false);
+      drawerTimerRef.current = null;
+    }, DRAWER_ANIMATION_MS);
+  };
 
   const getAssistantVisualClass = (message) => {
     const stateKey = message?.state || "St0";
@@ -296,15 +320,18 @@ function Chat() {
     </div>
   );
 
+  const drawerVisible = drawerOpen || drawerClosing;
+  const drawerClass = drawerClosing ? "closing" : "open";
+
   return (
     <div className="app" data-skin={skin}>
       <div className="topbar">
         <div className="brand"><div className="brand-name">BRUNEL</div><div className="brand-sub">The Builder</div></div>
-        <div className="topbar-right"><button className="drawer-toggle" onClick={() => setDrawerOpen(true)} aria-label="open controls" title="Open controls"><Settings size={16} /></button></div>
+        <div className="topbar-right"><button className="drawer-toggle" onClick={openDrawer} aria-label="open controls" title="Open controls"><Settings size={16} /></button></div>
       </div>
 
-      {drawerOpen && <><div className="drawer-backdrop" onClick={() => setDrawerOpen(false)} /><div className="drawer">
-        <div className="drawer-title"><span>Study</span><button className="drawer-close" onClick={() => setDrawerOpen(false)} aria-label="close menu"><X size={16} /></button></div>
+      {drawerVisible && <><div className={`drawer-backdrop ${drawerClass}`} onClick={closeDrawer} /><div className={`drawer ${drawerClass}`}>
+        <div className="drawer-title"><span>Study</span><button className="drawer-close" onClick={closeDrawer} aria-label="close menu"><X size={16} /></button></div>
         <div className="drawer-section"><div className="drawer-label">Account</div><span className="session-id">{user?.email || "—"}</span></div>
         <div className="drawer-section"><div className="drawer-label">Model</div><select className="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} disabled={sending} aria-label="select runtime model">{MODELS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
         <div className="drawer-section"><div className="drawer-label">Skin</div><select className="model-select" value={skin} onChange={(e) => setSkin(e.target.value)} aria-label="select skin">{SKINS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
