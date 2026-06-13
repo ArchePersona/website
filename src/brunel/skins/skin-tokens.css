@@ -1,0 +1,100 @@
+/* Brunel skin token overrides.
+   Apply by setting data-skin on .app, for example:
+   <div className="app" data-skin="desk">
+*/
+
+.app[data-skin="desk"] {
+  --bg: #1c1a17;
+  --panel: #242019;
+  --panel-rk: #2a2520;
+  --bronze: #b8763a;
+  --bronze-soft: rgba(184,118,58,.35);
+  --gold: #b8763a;
+  --white: #f3ecdd;
+  --ivory: #f3ecdd;
+  --mid: #b8aa97;
+  --dim: #786f62;
+  --green: #9bbf8a;
+  --bronze-wash: rgba(184,118,58,.06);
+  --bronze-wash-strong: rgba(184,118,58,.10);
+  --bronze-glow: rgba(184,118,58,.06);
+  --ivory-border: rgba(243,236,221,.08);
+  --ivory-border-soft: rgba(243,236,221,.06);
+}
+
+.app[data-skin="ledger"] {
+  --bg: #ece4d3;
+  --panel: #f6f0e2;
+  --panel-rk: #f0e8d6;
+  --bronze: #8a1f1f;
+  --bronze-soft: rgba(138,31,31,.30);
+  --gold: #8a1f1f;
+  --white: #2c2620;
+  --ivory: #2c2620;
+  --mid: #6b5d4d;
+  --dim: #a39681;
+  --green: #4a6b4a;
+  --bronze-wash: rgba(138,31,31,.06);
+  --bronze-wash-strong: rgba(138,31,31,.10);
+  --bronze-glow: rgba(138,31,31,.06);
+  --ivory-border: rgba(44,38,32,.08);
+  --ivory-border-soft: rgba(44,38,32,.06);
+}
+
+.app[data-skin="phosphor"] {
+  --bg: #070b08;
+  --panel: #0c130d;
+  --panel-rk: #0f170f;
+  --bronze: #33ff66;
+  --bronze-soft: rgba(51,255,102,.35);
+  --gold: #33ff66;
+  --white: #d6ffe0;
+  --ivory: #d6ffe0;
+  --mid: #7fae8a;
+  --dim: #3f5c46;
+  --green: #33ff66;
+  --body-font: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  --bronze-wash: rgba(51,255,102,.06);
+  --bronze-wash-strong: rgba(51,255,102,.10);
+  --bronze-glow: rgba(51,255,102,.06);
+  --ivory-border: rgba(214,255,224,.08);
+  --ivory-border-soft: rgba(214,255,224,.06);
+}
+
+.app[data-skin="night-study"] {
+  --bg: #10141c;
+  --panel: #161b26;
+  --panel-rk: #1a2030;
+  --bronze: #7fa3d4;
+  --bronze-soft: rgba(127,163,212,.35);
+  --gold: #7fa3d4;
+  --white: #e8edf5;
+  --ivory: #e8edf5;
+  --mid: #8b9bb4;
+  --dim: #4f5c72;
+  --green: #8fb8a3;
+  --bronze-wash: rgba(127,163,212,.06);
+  --bronze-wash-strong: rgba(127,163,212,.10);
+  --bronze-glow: rgba(127,163,212,.06);
+  --ivory-border: rgba(232,237,245,.08);
+  --ivory-border-soft: rgba(232,237,245,.06);
+}
+
+.app[data-skin="fireplace"] {
+  --bg: #1f1410;
+  --panel: #2a1c14;
+  --panel-rk: #2f2117;
+  --bronze: #e08a3c;
+  --bronze-soft: rgba(224,138,60,.35);
+  --gold: #e08a3c;
+  --white: #f5e6d3;
+  --ivory: #f5e6d3;
+  --mid: #c9a187;
+  --dim: #7a5c4a;
+  --green: #c99a5c;
+  --bronze-wash: rgba(224,138,60,.06);
+  --bronze-wash-strong: rgba(224,138,60,.10);
+  --bronze-glow: rgba(224,138,60,.06);
+  --ivory-border: rgba(245,230,211,.08);
+  --ivory-border-soft: rgba(245,230,211,.06);
+}
