@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import './arche-home.css';
 
 const pageContent = {
@@ -91,7 +92,7 @@ export default function InfoPage({ page }) {
 
   return (
     <main className="ap-home ap-subpage">
-      <a className="ap-back" href="/">ArchePersona</a>
+      <Link className="ap-back" to="/">ArchePersona</Link>
       <section className="ap-panel">
         <div className="ap-kicker">{content.kicker}</div>
         <h1>{content.title}</h1>
