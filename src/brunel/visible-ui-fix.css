@@ -209,6 +209,15 @@
     margin-top: 0;
   }
 
+  .chat-grid.single {
+    flex: 0 1 calc(100vh - 250px);
+    max-height: calc(100vh - 250px);
+  }
+
+  .chat-grid.single .panel.solo {
+    max-height: 100%;
+  }
+
   .shared-seed-box {
     padding: 8px 14px 6px;
   }
