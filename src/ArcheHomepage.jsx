@@ -10,10 +10,10 @@ const creations = [
 ];
 
 const oversight = [
-  ['V-Hold', 'Always On Guard', 'https://centurion-oversight.onrender.com', false],
-  ['Sentinel', 'Future Release', null, true],
-  ['Watchman', 'Future Release', null, true],
-  ['Steward', 'Future Release', null, true],
+  ['V-Hold', 'Always On Guard', '/consequence', false],
+  ['Approvals', 'Review before action', null, true],
+  ['Audit Trail', 'Proof over promises', null, true],
+  ['Precedent', 'Decisions with memory', null, true],
 ];
 
 const pages = {
@@ -104,15 +104,33 @@ const pages = {
       },
     ],
   },
+  consequence: {
+    kicker: 'Consequence',
+    title: 'V-Hold',
+    lead: 'Behavioral oversight for agent actions.',
+    sections: [
+      {
+        heading: 'Always On Guard',
+        body: [
+          'V-Hold gives agent actions a place to be proposed, reviewed, approved, escalated, audited, and remembered.',
+          'Capability alone is not trust. Consequence is what makes action answerable.',
+        ],
+      },
+      {
+        heading: 'What it does',
+        body: [
+          'Agents propose actions before they act.',
+          'Operators approve, reject, escalate, or delegate the decision.',
+          'Every decision becomes part of the record, creating proof, precedent, and accountability over time.',
+        ],
+      },
+    ],
+  },
   contact: {
     kicker: 'Contact',
     title: 'Start a Conversation',
     lead: 'Reach out to ArchePersona for questions, demos, or collaboration.',
     sections: [
-      {
-        heading: 'Email',
-        body: [{ text: 'therollingwrenchnc@gmail.com', href: 'mailto:therollingwrenchnc@gmail.com' }],
-      },
       {
         heading: 'GitHub',
         body: [{ text: 'ArchePersona', href: 'https://github.com/ArchePersona' }],
@@ -135,7 +153,7 @@ function HomeView() {
         <img className="ap-hero-image" src={heroImage} alt="Chimera and tower at sunset" />
         <img className="ap-hero-logo" src={logoImage} alt="ArchePersona" />
         <a className="ap-zone ap-zone-left" href="/brunel/disclaimer" aria-label="Character" />
-        <a className="ap-zone ap-zone-right" href="/oversight" aria-label="Consequence" />
+        <a className="ap-zone ap-zone-right" href="/consequence" aria-label="Consequence" />
       </section>
 
       <section className="ap-statement" aria-label="ArchePersona statement">
@@ -144,7 +162,7 @@ function HomeView() {
         <div className="ap-duality">
           <a href="/brunel/disclaimer">CHARACTER</a>
           <span>&amp;</span>
-          <a href="/oversight">CONSEQUENCE</a>
+          <a href="/consequence">CONSEQUENCE</a>
         </div>
       </section>
 
@@ -218,8 +236,8 @@ export default function ArcheHomepage() {
     return <DestinationPage kicker="Creations" title="RK Persona Studios" copy="Character is who an agent is. These are the lives and personalities brought into the world." items={creations} />;
   }
 
-  if (path === '/oversight') {
-    return <DestinationPage kicker="Oversight" title="Centurion Oversight" copy="Consequence is what an agent answers to. V-Hold is the first public instrument of that work." items={oversight} />;
+  if (path === '/consequence' || path === '/oversight') {
+    return <DestinationPage {...pages.consequence} items={oversight} />;
   }
 
   if (path === '/archengine') {
