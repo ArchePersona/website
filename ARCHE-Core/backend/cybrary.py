@@ -48,6 +48,15 @@ class UrlReferencePayload(BaseModel):
     title: str | None = None
 
 
+class GeneratedArtifactPayload(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    name: str = Field(default="generated-artifact.md")
+    mime_type: str = Field(default="text/markdown")
+    content: str = Field(min_length=1)
+    kind: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 def normalize_url(value: str) -> str:
     url = value.strip()
     if not URL_RE.match(url):
@@ -119,7 +128,6 @@ def extract_csv_text(blob: bytes, limit: int = TEXT_LIMIT) -> str | None:
 
 
 def sniff_pdf_text(blob: bytes, limit: int = TEXT_LIMIT) -> str | None:
-    # Minimal dependency-free fallback. Real PDF extraction/OCR should replace this.
     raw = blob[: min(len(blob), 512_000)].decode("latin-1", errors="ignore")
     candidates = re.findall(r"\(([^()]{3,500})\)", raw)
     text = "\n".join(candidates)
@@ -175,6 +183,28 @@ def build_initial_ingestion(kind: str, mime_type: str, name: str, blob: bytes) -
     }
 
 
+def make_artifact_item(*, user_id: str, name: str, mime_type: str, kind: str, source: str, status: str, blob: bytes, metadata: dict[str, Any] | None = None, preview_text: str | None = None, extracted_text: str | None = None, vision_summary: str | None = None, url: str | None = None) -> dict:
+    now = datetime.now(timezone.utc)
+    return {
+        "item_id": f"cyb-{uuid.uuid4().hex}",
+        "user_id": user_id,
+        "name": name,
+        "mime_type": mime_type,
+        "kind": kind,
+        "size": len(blob) if blob else len(url or ""),
+        "source": source,
+        "status": status,
+        "created_at": now,
+        "updated_at": now,
+        "preview_text": preview_text,
+        "extracted_text": extracted_text,
+        "vision_summary": vision_summary,
+        "url": url,
+        "metadata": metadata or {},
+        "blob_b64": base64.b64encode(blob).decode("ascii") if blob else "",
+    }
+
+
 def public_item(item: dict) -> dict:
     out = {k: v for k, v in item.items() if k not in {"_id", "blob_b64"}}
     if hasattr(out.get("created_at"), "isoformat"):
@@ -199,31 +229,52 @@ def build_cybrary_router(db: Any) -> APIRouter:
         if len(blob) > MAX_CYBRARY_BYTES:
             raise HTTPException(status_code=413, detail="file too large for Cybrary v1")
 
-        now = datetime.now(timezone.utc)
         mime_type = file.content_type or "application/octet-stream"
         kind = classify_mime(mime_type)
-        item_id = f"cyb-{uuid.uuid4().hex}"
-        name = file.filename or item_id
+        name = file.filename or "uploaded-artifact"
         ingestion = build_initial_ingestion(kind, mime_type, name, blob)
+        item = make_artifact_item(
+            user_id=current_user["id"],
+            name=name,
+            mime_type=mime_type,
+            kind=kind,
+            source="upload",
+            status=ingestion["status"],
+            blob=blob,
+            metadata=ingestion["metadata"],
+            preview_text=ingestion["preview_text"],
+            extracted_text=ingestion["extracted_text"],
+            vision_summary=ingestion["vision_summary"],
+        )
+        await db.cybrary_items.insert_one(item)
+        return public_item(item)
 
-        item = {
-            "item_id": item_id,
-            "user_id": current_user["id"],
-            "name": name,
-            "mime_type": mime_type,
-            "kind": kind,
-            "size": len(blob),
-            "source": "upload",
-            "status": ingestion["status"],
-            "created_at": now,
-            "updated_at": now,
-            "preview_text": ingestion["preview_text"],
-            "extracted_text": ingestion["extracted_text"],
-            "vision_summary": ingestion["vision_summary"],
-            "url": None,
-            "metadata": ingestion["metadata"],
-            "blob_b64": base64.b64encode(blob).decode("ascii"),
-        }
+    @router.post("/generated")
+    async def create_generated_artifact(
+        payload: GeneratedArtifactPayload,
+        current_user: dict = Depends(get_current_user),
+    ) -> dict:
+        blob = payload.content.encode("utf-8")
+        if len(blob) > MAX_CYBRARY_BYTES:
+            raise HTTPException(status_code=413, detail="generated artifact too large for Cybrary v1")
+        mime_type = payload.mime_type or "text/markdown"
+        inferred_kind = payload.kind or classify_mime(mime_type)
+        if inferred_kind == "text":
+            inferred_kind = "document"
+        ingestion = build_initial_ingestion("text", mime_type, payload.name, blob)
+        item = make_artifact_item(
+            user_id=current_user["id"],
+            name=payload.name,
+            mime_type=mime_type,
+            kind=inferred_kind,
+            source="generated",
+            status="generated",
+            blob=blob,
+            metadata={"generated": True, **(payload.metadata or {}), **ingestion["metadata"]},
+            preview_text=ingestion["preview_text"] or payload.content[:TEXT_LIMIT],
+            extracted_text=ingestion["extracted_text"] or payload.content[:TEXT_LIMIT],
+            vision_summary=None,
+        )
         await db.cybrary_items.insert_one(item)
         return public_item(item)
 
@@ -233,32 +284,26 @@ def build_cybrary_router(db: Any) -> APIRouter:
         current_user: dict = Depends(get_current_user),
     ) -> dict:
         url = normalize_url(payload.url)
-        now = datetime.now(timezone.utc)
-        item_id = f"cyb-{uuid.uuid4().hex}"
         name = payload.title or urlparse(url).netloc or url
         note = (
             "This URL has been stored as a Cybrary reference. "
             "Live page-reading is not enabled in this demo session yet, so the page has not been inspected. "
             "When fetching is enabled, this same item can hold title, metadata, page text, and working context."
         )
-        item = {
-            "item_id": item_id,
-            "user_id": current_user["id"],
-            "name": name,
-            "mime_type": "text/uri-list",
-            "kind": "url",
-            "size": len(url),
-            "source": "link",
-            "status": "reference",
-            "created_at": now,
-            "updated_at": now,
-            "preview_text": note,
-            "extracted_text": None,
-            "vision_summary": None,
-            "url": url,
-            "metadata": {"fetch_status": "not_enabled"},
-            "blob_b64": "",
-        }
+        item = make_artifact_item(
+            user_id=current_user["id"],
+            name=name,
+            mime_type="text/uri-list",
+            kind="url",
+            source="link",
+            status="reference",
+            blob=b"",
+            metadata={"fetch_status": "not_enabled"},
+            preview_text=note,
+            extracted_text=None,
+            vision_summary=None,
+            url=url,
+        )
         await db.cybrary_items.insert_one(item)
         return public_item(item)
 
