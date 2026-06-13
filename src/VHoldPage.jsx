@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import './vhold-page.css';
 
 const proofPoints = [
@@ -10,7 +11,7 @@ const proofPoints = [
 export default function VHoldPage() {
   return (
     <main className="vh-page">
-      <a className="vh-back" href="/">ArchePersona</a>
+      <Link className="vh-back" to="/">ArchePersona</Link>
 
       <section className="vh-card" aria-labelledby="vhold-title">
         <div className="vh-kicker">Consequence</div>
