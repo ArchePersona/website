@@ -8,11 +8,15 @@ Chat should reference Cybrary item IDs instead of owning raw files or URLs.
 from __future__ import annotations
 
 import base64
+import csv
+import io
 import re
 import uuid
+import zipfile
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlparse
+import xml.etree.ElementTree as ET
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -21,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from supabase_helper import get_current_user
 
 MAX_CYBRARY_BYTES = 20 * 1024 * 1024
+TEXT_LIMIT = 12000
 TEXT_MIME_PREFIXES = ("text/",)
 TEXT_MIME_TYPES = {
     "application/json",
@@ -80,7 +85,7 @@ def classify_mime(mime_type: str) -> str:
     return "file"
 
 
-def safe_text_preview(blob: bytes, limit: int = 12000) -> str | None:
+def safe_text_preview(blob: bytes, limit: int = TEXT_LIMIT) -> str | None:
     if not blob:
         return None
     chunk = blob[:limit]
@@ -88,6 +93,86 @@ def safe_text_preview(blob: bytes, limit: int = 12000) -> str | None:
         return chunk.decode("utf-8", errors="replace")
     except Exception:
         return None
+
+
+def extract_docx_text(blob: bytes, limit: int = TEXT_LIMIT) -> str | None:
+    try:
+        with zipfile.ZipFile(io.BytesIO(blob)) as z:
+            xml = z.read("word/document.xml")
+        root = ET.fromstring(xml)
+        parts = [node.text for node in root.iter() if node.text]
+        text = " ".join(parts).strip()
+        return text[:limit] if text else None
+    except Exception:
+        return None
+
+
+def extract_csv_text(blob: bytes, limit: int = TEXT_LIMIT) -> str | None:
+    raw = safe_text_preview(blob, limit=limit)
+    if not raw:
+        return None
+    try:
+        rows = list(csv.reader(io.StringIO(raw)))[:50]
+        return "\n".join(" | ".join(cell.strip() for cell in row) for row in rows)[:limit]
+    except Exception:
+        return raw[:limit]
+
+
+def sniff_pdf_text(blob: bytes, limit: int = TEXT_LIMIT) -> str | None:
+    # Minimal dependency-free fallback. Real PDF extraction/OCR should replace this.
+    raw = blob[: min(len(blob), 512_000)].decode("latin-1", errors="ignore")
+    candidates = re.findall(r"\(([^()]{3,500})\)", raw)
+    text = "\n".join(candidates)
+    text = re.sub(r"\\[nrt]", " ", text).strip()
+    return text[:limit] if text else None
+
+
+def build_initial_ingestion(kind: str, mime_type: str, name: str, blob: bytes) -> dict:
+    metadata: dict[str, Any] = {"ingestion_version": "v1"}
+    extracted_text = None
+    preview_text = None
+    vision_summary = None
+    status = "stored"
+
+    lower_name = (name or "").lower()
+    if kind == "text":
+        extracted_text = extract_csv_text(blob) if mime_type == "text/csv" or lower_name.endswith(".csv") else safe_text_preview(blob)
+        preview_text = extracted_text
+        status = "ingested" if extracted_text else "stored"
+    elif kind == "document":
+        if mime_type.endswith("wordprocessingml.document") or lower_name.endswith(".docx"):
+            extracted_text = extract_docx_text(blob)
+            metadata["extractor"] = "docx-xml"
+        elif mime_type == "application/pdf" or lower_name.endswith(".pdf"):
+            extracted_text = sniff_pdf_text(blob)
+            metadata["extractor"] = "pdf-sniff-fallback"
+        else:
+            extracted_text = safe_text_preview(blob)
+            metadata["extractor"] = "text-fallback"
+        preview_text = extracted_text
+        status = "ingested" if extracted_text else "pending_ingest"
+    elif kind == "image":
+        vision_summary = (
+            "Image stored in the Cybrary. Image inspection is not enabled in this demo session yet; "
+            "when the vision organ is active, this item will hold a visual summary, OCR text, and tags."
+        )
+        preview_text = vision_summary
+        status = "pending_vision"
+        metadata["vision_status"] = "not_enabled"
+    elif kind == "audio":
+        preview_text = "Audio stored in the Cybrary. Transcription is pending."
+        status = "pending_transcript"
+    elif kind == "video":
+        preview_text = "Video stored in the Cybrary. Frame sampling and transcript extraction are pending."
+        status = "pending_video_ingest"
+
+    return {
+        "status": status,
+        "preview_text": preview_text,
+        "extracted_text": extracted_text,
+        "vision_summary": vision_summary,
+        "metadata": metadata,
+    }
 
 
 def public_item(item: dict) -> dict:
@@ -118,24 +203,25 @@ def build_cybrary_router(db: Any) -> APIRouter:
         mime_type = file.content_type or "application/octet-stream"
         kind = classify_mime(mime_type)
         item_id = f"cyb-{uuid.uuid4().hex}"
-        preview_text = safe_text_preview(blob) if kind == "text" else None
+        name = file.filename or item_id
+        ingestion = build_initial_ingestion(kind, mime_type, name, blob)
 
         item = {
             "item_id": item_id,
             "user_id": current_user["id"],
-            "name": file.filename or item_id,
+            "name": name,
             "mime_type": mime_type,
             "kind": kind,
             "size": len(blob),
             "source": "upload",
-            "status": "stored",
+            "status": ingestion["status"],
             "created_at": now,
             "updated_at": now,
-            "preview_text": preview_text,
-            "extracted_text": preview_text,
-            "vision_summary": None,
+            "preview_text": ingestion["preview_text"],
+            "extracted_text": ingestion["extracted_text"],
+            "vision_summary": ingestion["vision_summary"],
             "url": None,
-            "metadata": {},
+            "metadata": ingestion["metadata"],
             "blob_b64": base64.b64encode(blob).decode("ascii"),
         }
         await db.cybrary_items.insert_one(item)
@@ -174,6 +260,27 @@ def build_cybrary_router(db: Any) -> APIRouter:
             "blob_b64": "",
         }
         await db.cybrary_items.insert_one(item)
+        return public_item(item)
+
+    @router.post("/items/{item_id}/ingest")
+    async def ingest_cybrary_item(item_id: str, current_user: dict = Depends(get_current_user)) -> dict:
+        item = await db.cybrary_items.find_one({"user_id": current_user["id"], "item_id": item_id})
+        if not item:
+            raise HTTPException(status_code=404, detail="Cybrary item not found")
+        if item.get("kind") == "url":
+            return public_item(item)
+        blob = base64.b64decode(item.get("blob_b64") or "")
+        ingestion = build_initial_ingestion(item.get("kind", "file"), item.get("mime_type", ""), item.get("name", ""), blob)
+        update = {
+            "status": ingestion["status"],
+            "preview_text": ingestion["preview_text"],
+            "extracted_text": ingestion["extracted_text"],
+            "vision_summary": ingestion["vision_summary"],
+            "metadata": {**(item.get("metadata") or {}), **ingestion["metadata"]},
+            "updated_at": datetime.now(timezone.utc),
+        }
+        await db.cybrary_items.update_one({"user_id": current_user["id"], "item_id": item_id}, {"$set": update})
+        item.update(update)
         return public_item(item)
 
     @router.get("/items")
