@@ -98,3 +98,119 @@
   --ivory-border: rgba(245,230,211,.08);
   --ivory-border-soft: rgba(245,230,211,.06);
 }
+
+.app[data-skin="drafting-table"] {
+  --bg: #0f2438;
+  --panel: #14304a;
+  --panel-rk: #173757;
+  --bronze: #bfe3ff;
+  --bronze-soft: rgba(191,227,255,.35);
+  --gold: #bfe3ff;
+  --white: #eaf6ff;
+  --ivory: #eaf6ff;
+  --mid: #8fb6d6;
+  --dim: #4f7da3;
+  --green: #9bd4c0;
+  --bronze-wash: rgba(191,227,255,.06);
+  --bronze-wash-strong: rgba(191,227,255,.10);
+  --bronze-glow: rgba(191,227,255,.08);
+  --ivory-border: rgba(234,246,255,.10);
+  --ivory-border-soft: rgba(234,246,255,.07);
+  --body-font: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+}
+
+.app[data-skin="cartographer"] {
+  --bg: #ddd0ad;
+  --panel: #e8dcb9;
+  --panel-rk: #e2d4ad;
+  --bronze: #2f3e5c;
+  --bronze-soft: rgba(47,62,92,.30);
+  --gold: #2f3e5c;
+  --white: #2b2415;
+  --ivory: #2b2415;
+  --mid: #6e6248;
+  --dim: #a8966c;
+  --green: #5a7a5e;
+  --bronze-wash: rgba(47,62,92,.06);
+  --bronze-wash-strong: rgba(47,62,92,.10);
+  --bronze-glow: rgba(47,62,92,.06);
+  --ivory-border: rgba(43,36,21,.08);
+  --ivory-border-soft: rgba(43,36,21,.06);
+}
+
+.app[data-skin="letterpress"] {
+  --bg: #e9e7e2;
+  --panel: #f4f2ed;
+  --panel-rk: #efece5;
+  --bronze: #9c1c1c;
+  --bronze-soft: rgba(156,28,28,.30);
+  --gold: #9c1c1c;
+  --white: #1c1a17;
+  --ivory: #1c1a17;
+  --mid: #5c574e;
+  --dim: #a39c8e;
+  --green: #4f6e52;
+  --bronze-wash: rgba(156,28,28,.05);
+  --bronze-wash-strong: rgba(156,28,28,.09);
+  --bronze-glow: rgba(156,28,28,.05);
+  --ivory-border: rgba(28,26,23,.10);
+  --ivory-border-soft: rgba(28,26,23,.07);
+}
+
+.app[data-skin="tron"] {
+  --bg: #04080d;
+  --panel: #060f18;
+  --panel-rk: #081420;
+  --bronze: #4dd9ff;
+  --bronze-soft: rgba(77,217,255,.35);
+  --gold: #4dd9ff;
+  --white: #d8f6ff;
+  --ivory: #d8f6ff;
+  --mid: #5fa8c2;
+  --dim: #2a5468;
+  --green: #4dd9ff;
+  --bronze-wash: rgba(77,217,255,.06);
+  --bronze-wash-strong: rgba(77,217,255,.12);
+  --bronze-glow: rgba(77,217,255,.25);
+  --ivory-border: rgba(216,246,255,.10);
+  --ivory-border-soft: rgba(216,246,255,.07);
+  --title-font: 'Audiowide', 'IBM Plex Mono', sans-serif;
+  --body-font: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+}
+
+.app[data-skin="tron"] .panel,
+.app[data-skin="tron"] .bubble-assistant,
+.app[data-skin="tron"] .bubble-user,
+.app[data-skin="tron"] .drawer,
+.app[data-skin="tron"] textarea.input {
+  box-shadow: 0 0 14px var(--bronze-glow);
+}
+
+.app[data-skin="jarvis"] {
+  --bg: #050a14;
+  --panel: #0a1626;
+  --panel-rk: #0d1c30;
+  --bronze: #ff8a3c;
+  --bronze-soft: rgba(255,138,60,.35);
+  --gold: #ff8a3c;
+  --white: #cfe8ff;
+  --ivory: #cfe8ff;
+  --mid: #6f9ec9;
+  --dim: #2c4a6e;
+  --green: #5ec9ff;
+  --bronze-wash: rgba(94,201,255,.06);
+  --bronze-wash-strong: rgba(94,201,255,.12);
+  --bronze-glow: rgba(94,201,255,.22);
+  --ivory-border: rgba(94,201,255,.14);
+  --ivory-border-soft: rgba(94,201,255,.08);
+  --title-font: 'Audiowide', 'IBM Plex Mono', sans-serif;
+  --body-font: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+}
+
+.app[data-skin="jarvis"] .panel,
+.app[data-skin="jarvis"] .bubble-assistant,
+.app[data-skin="jarvis"] .bubble-user,
+.app[data-skin="jarvis"] .drawer,
+.app[data-skin="jarvis"] textarea.input {
+  box-shadow: 0 0 14px var(--bronze-glow);
+}
