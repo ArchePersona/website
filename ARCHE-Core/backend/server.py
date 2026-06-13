@@ -68,7 +68,7 @@ _emergent_key = os.environ.get("EMERGENT_LLM_KEY", "")
 stt_client: OpenAISpeechToText | None = OpenAISpeechToText(api_key=_emergent_key) if _emergent_key else None
 
 MEMORY_TURN_CAP = 200
-PROMPT_HISTORY_TURNS = 3
+PROMPT_HISTORY_TURNS = 2
 FACTS_IN_PROMPT = 6
 SESSION_TTL_DAYS = 90
 SESSION_TTL_SECONDS = SESSION_TTL_DAYS * 24 * 60 * 60
@@ -123,10 +123,12 @@ async def get_or_create_session(session_id: str) -> dict:
     doc = await db.sessions.find_one({"session_id": session_id}, {"_id": 0})
     if doc:
         return doc
+    now = datetime.now(timezone.utc)
     doc = {
         "session_id": session_id,
-        "created": datetime.now(timezone.utc).isoformat(),
-        "updated": datetime.now(timezone.utc),
+        "created": now.isoformat(),
+        "first_seen": now.isoformat(),
+        "updated": now,
         "rk_history": [],
         "plain_history": [],
         "rk_facts": [],
@@ -137,6 +139,10 @@ async def get_or_create_session(session_id: str) -> dict:
         "last_flags": [],
         "topic_entropy": {},
         "continuity_synopsis": "No prior session synopsis yet.",
+        "turn_count": 0,
+        "trust": 5,
+        "momentum": "new",
+        "cooling": "none",
     }
     await db.sessions.insert_one(dict(doc))
     return doc
@@ -200,6 +206,60 @@ def build_recent_synopsis(history: list[dict], prior_synopsis: str | None = None
     return synopsis or prior_synopsis or "No usable continuity synopsis yet."
 
 
+def derive_cooling(delta_seconds: float | None) -> str:
+    if delta_seconds is None:
+        return "none"
+    hours = max(0, delta_seconds) / 3600
+    if hours < 6:
+        return "none"
+    if hours < 24:
+        return "slight"
+    if hours < 24 * 7:
+        return "moderate"
+    if hours < 24 * 30:
+        return "strong"
+    return "cold"
+
+
+def derive_momentum(delta_seconds: float | None, recent_turns: int) -> str:
+    if delta_seconds is None:
+        return "new"
+    minutes = max(0, delta_seconds) / 60
+    if minutes < 20 and recent_turns >= 3:
+        return "high"
+    if minutes < 180:
+        return "active"
+    if minutes < 60 * 24:
+        return "settling"
+    if minutes < 60 * 24 * 7:
+        return "cooling"
+    return "dormant"
+
+
+def derive_relationship_stage(first_seen: datetime | None, now: datetime, turn_count: int) -> tuple[str, int]:
+    if not first_seen:
+        return "new", 0
+    days = max(0, int((now - first_seen).total_seconds() // 86400))
+    if turn_count >= 100 or days >= 30:
+        return "long-term continuity", days
+    if turn_count >= 25 or days >= 7:
+        return "established", days
+    if turn_count >= 5 or days >= 1:
+        return "familiar", days
+    return "new acquaintance", days
+
+
+def derive_trust(previous_trust: int, cooling: str, turn_count: int) -> int:
+    trust = max(0, min(10, int(previous_trust or 5)))
+    if turn_count >= 25 and cooling in {"none", "slight"}:
+        trust += 1
+    if cooling == "strong":
+        trust -= 1
+    if cooling == "cold":
+        trust -= 2
+    return max(0, min(10, trust))
+
+
 def build_temporal_packet(
     *,
     now: datetime,
@@ -211,6 +271,7 @@ def build_temporal_packet(
     current_mode: str,
     zone: str,
     cybrary_items: list[dict],
+    pressure: dict,
 ) -> str:
     history = session.get("rk_history", []) or []
     last_turn = history[-1] if history else None
@@ -232,6 +293,12 @@ def build_temporal_packet(
         f"Client timezone label: {timezone_label}\n"
         f"Previous interaction timestamp: {last_ts.isoformat() if last_ts else 'none recorded'}\n"
         f"Elapsed silence since previous interaction: {elapsed}\n"
+        f"Relationship age: {pressure['relationship_age_days']} days\n"
+        f"Relationship stage: {pressure['relationship_stage']}\n"
+        f"Turn count: {pressure['turn_count']}\n"
+        f"Momentum: {pressure['momentum']}\n"
+        f"Cooling: {pressure['cooling']}\n"
+        f"Trust: {pressure['trust']}/10\n"
         f"Previous state/mode: {previous_state} / {previous_mode}\n"
         f"Current inferred state/mode/zone: {current_state} / {current_mode} / {zone}\n"
         f"State drift: {state_delta}\n"
@@ -240,7 +307,7 @@ def build_temporal_packet(
         f"{synopsis}\n"
         "Active Cybrary artifacts this turn:\n"
         f"{artifact_text}\n"
-        "Temporal doctrine: ARCHE is time-aware. Use current time, prior interaction time, elapsed silence, state drift, and synopsis as working context. "
+        "Temporal doctrine: ARCHE is time-aware. Use current time, prior interaction time, elapsed silence, momentum, cooling, trust, relationship age, state drift, and synopsis as working context. "
         "If timestamps are visible or supplied in the packet, do not deny awareness of them. Answer from session evidence before claiming limitation."
     )
 
@@ -351,6 +418,24 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     session = await get_or_create_session(user_id)
     previous_state = session.get("last_state", "unknown")
     previous_mode = session.get("last_mode", "unknown")
+    history = session.get("rk_history", []) or []
+    last_turn = history[-1] if history else None
+    last_ts = parse_iso_datetime(last_turn.get("ts") if last_turn else None)
+    elapsed_seconds = (now - last_ts).total_seconds() if last_ts else None
+    first_seen = parse_iso_datetime(session.get("first_seen") or session.get("created"))
+    prior_turn_count = int(session.get("turn_count") or len(history))
+    cooling = derive_cooling(elapsed_seconds)
+    momentum = derive_momentum(elapsed_seconds, len(history[-6:]))
+    relationship_stage, relationship_age_days = derive_relationship_stage(first_seen, now, prior_turn_count)
+    trust = derive_trust(int(session.get("trust") or 5), cooling, prior_turn_count)
+    pressure = {
+        "momentum": momentum,
+        "cooling": cooling,
+        "trust": trust,
+        "relationship_stage": relationship_stage,
+        "relationship_age_days": relationship_age_days,
+        "turn_count": prior_turn_count + 1,
+    }
 
     cybrary_item_ids = list(req.cybrary_item_ids)
     auto_url = normalize_url_reference(req.message) if not cybrary_item_ids else None
@@ -386,6 +471,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         current_mode=mode,
         zone=zone,
         cybrary_items=cybrary_items,
+        pressure=pressure,
     )
     llm_message = f"{req.message}\n\n{temporal_packet}"
     if cybrary_context:
@@ -404,7 +490,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         "Do not describe missing tools as permanent personal inability. Say the current demo session has not enabled the relevant organ, "
         "or that the Cybrary item exists but has not yet been inspected."
         "\n\nTemporal doctrine: ARCHE is time-aware. Prefer the temporal session packet over raw transcript. "
-        "Use elapsed silence, current timestamp, previous state/mode, current state/mode, state drift, active artifacts, and continuity synopsis. "
+        "Use elapsed silence, current timestamp, previous state/mode, current state/mode, state drift, active artifacts, continuity synopsis, momentum, cooling, trust, relationship age, and turn count. "
         "Never deny awareness of timestamps or session timing when they are supplied in the packet or visible in the conversation."
     )
 
@@ -427,7 +513,13 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
             "ts": now.isoformat(),
             "client_ts": req.client_ts,
             "client_timezone": req.client_timezone,
-            "elapsed_since_previous": temporal_packet.split("Elapsed silence since previous interaction: ", 1)[1].split("\n", 1)[0],
+            "elapsed_since_previous": human_elapsed(elapsed_seconds),
+            "momentum": momentum,
+            "cooling": cooling,
+            "trust": trust,
+            "relationship_stage": relationship_stage,
+            "relationship_age_days": relationship_age_days,
+            "turn_count": prior_turn_count + 1,
             "state": state,
             "zone": zone,
             "mode": mode,
@@ -452,6 +544,12 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         session["last_flags"] = chips
         session["topic_entropy"] = topic_entropy
         session["continuity_synopsis"] = build_recent_synopsis(session.get("rk_history", []), session.get("continuity_synopsis"))
+        session["turn_count"] = prior_turn_count + 1
+        session["momentum"] = momentum
+        session["cooling"] = cooling
+        session["trust"] = trust
+        session["relationship_stage"] = relationship_stage
+        session["relationship_age_days"] = relationship_age_days
 
     if plain_text is not None:
         session["plain_history"].append({"user": req.message, "assistant": plain_text, "ts": now.isoformat(), "client_ts": req.client_ts, "cybrary_item_ids": cybrary_item_ids})
@@ -471,7 +569,7 @@ async def get_session(session_id: str, current_user: dict = Depends(get_current_
     if session_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="forbidden")
     session = await get_or_create_session(session_id)
-    return SessionState(session_id=session["session_id"], rk_history=[{"user": t.get("user", ""), "assistant": t.get("assistant", ""), "ts": t.get("ts"), "client_ts": t.get("client_ts"), "attachment": (t.get("cybrary_items") or [None])[0]} for t in session.get("rk_history", [])])
+    return SessionState(session_id=session["session_id"], rk_history=[{"user": t.get("user", ""), "assistant": t.get("assistant", ""), "ts": t.get("ts"), "client_ts": t.get("client_ts"), "elapsed_since_previous": t.get("elapsed_since_previous"), "momentum": t.get("momentum"), "cooling": t.get("cooling"), "trust": t.get("trust"), "attachment": (t.get("cybrary_items") or [None])[0]} for t in session.get("rk_history", [])])
 
 
 @api.get("/me")
