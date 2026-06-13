@@ -19,6 +19,7 @@ function App() {
         <Routes>
           <Route path="/" element={<ArcheHomepage />} />
           <Route path="/creations" element={<ArcheHomepage />} />
+          <Route path="/consequence" element={<ArcheHomepage />} />
           <Route path="/oversight" element={<ArcheHomepage />} />
           <Route path="/archengine" element={<ArcheHomepage />} />
           <Route path="/about" element={<ArcheHomepage />} />
