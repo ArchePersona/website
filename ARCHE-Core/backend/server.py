@@ -260,6 +260,30 @@ def derive_trust(previous_trust: int, cooling: str, turn_count: int) -> int:
     return max(0, min(10, trust))
 
 
+def derive_pressure(session: dict, now: datetime) -> dict:
+    history = session.get("rk_history", []) or []
+    last_turn = history[-1] if history else None
+    last_ts = parse_iso_datetime(last_turn.get("ts") if last_turn else None)
+    elapsed_seconds = (now - last_ts).total_seconds() if last_ts else None
+    first_seen = parse_iso_datetime(session.get("first_seen") or session.get("created"))
+    prior_turn_count = int(session.get("turn_count") or len(history))
+    cooling = derive_cooling(elapsed_seconds)
+    momentum = derive_momentum(elapsed_seconds, len(history[-6:]))
+    relationship_stage, relationship_age_days = derive_relationship_stage(first_seen, now, prior_turn_count)
+    trust = derive_trust(int(session.get("trust") or 5), cooling, prior_turn_count)
+    return {
+        "elapsed_seconds": elapsed_seconds,
+        "elapsed_since_previous": human_elapsed(elapsed_seconds),
+        "last_interaction": last_ts.isoformat() if last_ts else None,
+        "momentum": momentum,
+        "cooling": cooling,
+        "trust": trust,
+        "relationship_stage": relationship_stage,
+        "relationship_age_days": relationship_age_days,
+        "turn_count": prior_turn_count + 1,
+    }
+
+
 def build_temporal_packet(
     *,
     now: datetime,
@@ -274,9 +298,6 @@ def build_temporal_packet(
     pressure: dict,
 ) -> str:
     history = session.get("rk_history", []) or []
-    last_turn = history[-1] if history else None
-    last_ts = parse_iso_datetime(last_turn.get("ts") if last_turn else None)
-    elapsed = human_elapsed((now - last_ts).total_seconds() if last_ts else None)
     client_time = req.client_ts or "not supplied"
     timezone_label = req.client_timezone or "not supplied"
     state_delta = "unchanged" if previous_state == current_state else f"{previous_state} -> {current_state}"
@@ -291,8 +312,8 @@ def build_temporal_packet(
         f"Server current time UTC: {now.isoformat()}\n"
         f"Client displayed timestamp: {client_time}\n"
         f"Client timezone label: {timezone_label}\n"
-        f"Previous interaction timestamp: {last_ts.isoformat() if last_ts else 'none recorded'}\n"
-        f"Elapsed silence since previous interaction: {elapsed}\n"
+        f"Previous interaction timestamp: {pressure.get('last_interaction') or 'none recorded'}\n"
+        f"Elapsed silence since previous interaction: {pressure['elapsed_since_previous']}\n"
         f"Relationship age: {pressure['relationship_age_days']} days\n"
         f"Relationship stage: {pressure['relationship_stage']}\n"
         f"Turn count: {pressure['turn_count']}\n"
@@ -418,24 +439,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     session = await get_or_create_session(user_id)
     previous_state = session.get("last_state", "unknown")
     previous_mode = session.get("last_mode", "unknown")
-    history = session.get("rk_history", []) or []
-    last_turn = history[-1] if history else None
-    last_ts = parse_iso_datetime(last_turn.get("ts") if last_turn else None)
-    elapsed_seconds = (now - last_ts).total_seconds() if last_ts else None
-    first_seen = parse_iso_datetime(session.get("first_seen") or session.get("created"))
-    prior_turn_count = int(session.get("turn_count") or len(history))
-    cooling = derive_cooling(elapsed_seconds)
-    momentum = derive_momentum(elapsed_seconds, len(history[-6:]))
-    relationship_stage, relationship_age_days = derive_relationship_stage(first_seen, now, prior_turn_count)
-    trust = derive_trust(int(session.get("trust") or 5), cooling, prior_turn_count)
-    pressure = {
-        "momentum": momentum,
-        "cooling": cooling,
-        "trust": trust,
-        "relationship_stage": relationship_stage,
-        "relationship_age_days": relationship_age_days,
-        "turn_count": prior_turn_count + 1,
-    }
+    pressure = derive_pressure(session, now)
 
     cybrary_item_ids = list(req.cybrary_item_ids)
     auto_url = normalize_url_reference(req.message) if not cybrary_item_ids else None
@@ -513,13 +517,13 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
             "ts": now.isoformat(),
             "client_ts": req.client_ts,
             "client_timezone": req.client_timezone,
-            "elapsed_since_previous": human_elapsed(elapsed_seconds),
-            "momentum": momentum,
-            "cooling": cooling,
-            "trust": trust,
-            "relationship_stage": relationship_stage,
-            "relationship_age_days": relationship_age_days,
-            "turn_count": prior_turn_count + 1,
+            "elapsed_since_previous": pressure["elapsed_since_previous"],
+            "momentum": pressure["momentum"],
+            "cooling": pressure["cooling"],
+            "trust": pressure["trust"],
+            "relationship_stage": pressure["relationship_stage"],
+            "relationship_age_days": pressure["relationship_age_days"],
+            "turn_count": pressure["turn_count"],
             "state": state,
             "zone": zone,
             "mode": mode,
@@ -544,12 +548,12 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         session["last_flags"] = chips
         session["topic_entropy"] = topic_entropy
         session["continuity_synopsis"] = build_recent_synopsis(session.get("rk_history", []), session.get("continuity_synopsis"))
-        session["turn_count"] = prior_turn_count + 1
-        session["momentum"] = momentum
-        session["cooling"] = cooling
-        session["trust"] = trust
-        session["relationship_stage"] = relationship_stage
-        session["relationship_age_days"] = relationship_age_days
+        session["turn_count"] = pressure["turn_count"]
+        session["momentum"] = pressure["momentum"]
+        session["cooling"] = pressure["cooling"]
+        session["trust"] = pressure["trust"]
+        session["relationship_stage"] = pressure["relationship_stage"]
+        session["relationship_age_days"] = pressure["relationship_age_days"]
 
     if plain_text is not None:
         session["plain_history"].append({"user": req.message, "assistant": plain_text, "ts": now.isoformat(), "client_ts": req.client_ts, "cybrary_item_ids": cybrary_item_ids})
@@ -570,6 +574,34 @@ async def get_session(session_id: str, current_user: dict = Depends(get_current_
         raise HTTPException(status_code=403, detail="forbidden")
     session = await get_or_create_session(session_id)
     return SessionState(session_id=session["session_id"], rk_history=[{"user": t.get("user", ""), "assistant": t.get("assistant", ""), "ts": t.get("ts"), "client_ts": t.get("client_ts"), "elapsed_since_previous": t.get("elapsed_since_previous"), "momentum": t.get("momentum"), "cooling": t.get("cooling"), "trust": t.get("trust"), "attachment": (t.get("cybrary_items") or [None])[0]} for t in session.get("rk_history", [])])
+
+
+@api.get("/session-packet")
+async def get_session_packet(current_user: dict = Depends(get_current_user)) -> dict:
+    now = datetime.now(timezone.utc)
+    session = await get_or_create_session(current_user["id"])
+    pressure = derive_pressure(session, now)
+    packet_req = ChatRequest(message="", target="rk_only", client_ts=now.isoformat(), client_timezone="server/UTC")
+    packet = build_temporal_packet(
+        now=now,
+        session=session,
+        req=packet_req,
+        previous_state=session.get("last_state", "unknown"),
+        previous_mode=session.get("last_mode", "unknown"),
+        current_state=session.get("last_state", "unknown"),
+        current_mode=session.get("last_mode", "unknown"),
+        zone=session.get("last_zone", "unknown"),
+        cybrary_items=[],
+        pressure=pressure,
+    )
+    return {
+        "packet": packet,
+        "pressure": pressure,
+        "state": session.get("last_state"),
+        "mode": session.get("last_mode"),
+        "zone": session.get("last_zone"),
+        "continuity_synopsis": session.get("continuity_synopsis"),
+    }
 
 
 @api.get("/me")
