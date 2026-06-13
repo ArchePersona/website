@@ -9,7 +9,6 @@ import "./visible-ui-fix.css";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "https://brunel-5lxo.onrender.com";
 const API = `${BACKEND_URL}/api`;
-const MAX_FILE_CHARS = 18000;
 
 const STATE_VISUALS = {
   St0: { label: "Baseline", className: "state-baseline" },
@@ -60,6 +59,12 @@ const MODELS = [
 
 const TIME_FORMATTER = new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 const nowIso = () => new Date().toISOString();
+
+const formatFileSize = (bytes = 0) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 const formatAbsoluteTime = (iso) => {
   if (!iso) return "";
@@ -113,6 +118,7 @@ function Chat() {
   const [listening, setListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(true);
   const [fileStatus, setFileStatus] = useState("");
+  const [attachedFile, setAttachedFile] = useState(null);
   const [viewMode, setViewMode] = useState("single");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [skin, setSkin] = useState(loadStoredSkin);
@@ -127,9 +133,7 @@ function Chat() {
   const doubleMode = isAdmin && viewMode === "double";
   const authHeader = useMemo(() => (session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}), [session?.access_token]);
 
-  useEffect(() => {
-    try { window.localStorage.setItem("brunel-skin", skin); } catch (_) { /* noop */ }
-  }, [skin]);
+  useEffect(() => { try { window.localStorage.setItem("brunel-skin", skin); } catch (_) { /* noop */ } }, [skin]);
 
   useEffect(() => {
     if (!sessionId || !session?.access_token) return;
@@ -140,7 +144,7 @@ function Chat() {
         if (cancelled) return;
         const d = r.data;
         setMessages((d.rk_history || []).flatMap((t, index) => [
-          { id: `hydrated-user-${index}`, role: "user", content: t.user, ts: t.ts || null },
+          { id: `hydrated-user-${index}`, role: "user", content: t.user, ts: t.ts || null, attachment: t.attachment || null },
           { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null, state: t.current_state_id || "St0", mode: t.current_mode_id || "011" },
         ]));
       } catch (e) { console.warn("session hydrate failed", e); }
@@ -195,34 +199,33 @@ function Chat() {
 
   const openFilePicker = () => fileInputRef.current?.click();
 
-  const attachFile = async (event) => {
+  const attachFile = (event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    try {
-      const raw = await file.text();
-      const truncated = raw.length > MAX_FILE_CHARS;
-      const body = truncated ? raw.slice(0, MAX_FILE_CHARS) : raw;
-      const attachedAt = formatAbsoluteTime(nowIso());
-      const fileBlock = `\n\n[Attached file: ${file.name}${truncated ? " · truncated" : ""}${attachedAt ? ` · ${attachedAt}` : ""}]\n\`\`\`\n${body}\n\`\`\``;
-      setText((current) => `${current}${current.trim() ? "\n" : ""}${fileBlock}`.trimStart());
-      setFileStatus(`${file.name}${truncated ? " attached, truncated" : " attached"}`);
-      window.setTimeout(() => setFileStatus(""), 2400);
-    } catch (_) { setFileStatus(`could not read ${file.name}`); }
+    setAttachedFile({ file, name: file.name, size: file.size, type: file.type || "file" });
+    setFileStatus(`${file.name} attached as file`);
+    window.setTimeout(() => setFileStatus(""), 2400);
   };
 
   const send = async () => {
     const msg = text.trim();
-    if (!msg || sending) return;
+    if ((!msg && !attachedFile) || sending) return;
     const requestDouble = doubleMode;
     const userId = `user-${Date.now()}`;
     const assistantId = `assistant-${Date.now() + 1}`;
     const userTs = nowIso();
+    const attachment = attachedFile ? { name: attachedFile.name, size: attachedFile.size, type: attachedFile.type } : null;
+    const outbound = attachment
+      ? `${msg || "Please review the attached file."}\n\n[Attached file retained: ${attachment.name} · ${formatFileSize(attachment.size)} · ${attachment.type}]`
+      : msg;
+
     setSending(true);
     setText("");
-    setMessages((m) => [...m, { id: userId, role: "user", content: msg, ts: userTs }]);
+    setAttachedFile(null);
+    setMessages((m) => [...m, { id: userId, role: "user", content: msg || "Attached file", ts: userTs, attachment }]);
     try {
-      const r = await axios.post(`${API}/chat`, { message: msg, target: requestDouble ? "both" : "rk_only", model: selectedModel, client_ts: userTs, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null }, { headers: authHeader, timeout: 45000 });
+      const r = await axios.post(`${API}/chat`, { message: outbound, target: requestDouble ? "both" : "rk_only", model: selectedModel, client_ts: userTs, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null, attachment }, { headers: authHeader, timeout: 45000 });
       const d = r.data;
       const content = d.rk_response || d.plain_response || "";
       const assistantTs = d.ts || d.created_at || nowIso();
@@ -241,7 +244,7 @@ function Chat() {
     for (const m of messages) {
       if (m.role === "user") {
         if (pending) out.push(pending);
-        pending = { user: m.content, userTs: m.ts, assistant: null, plain: null, assistantTs: null, assistantState: "St0", assistantMode: "011" };
+        pending = { user: m.content, userTs: m.ts, userAttachment: m.attachment || null, assistant: null, plain: null, assistantTs: null, assistantState: "St0", assistantMode: "011" };
       } else if (pending) {
         pending.assistant = m.content;
         pending.plain = m.plain || null;
@@ -251,7 +254,7 @@ function Chat() {
         out.push(pending);
         pending = null;
       } else {
-        out.push({ user: null, userTs: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: m.state || "St0", assistantMode: m.mode || "011" });
+        out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: m.state || "St0", assistantMode: m.mode || "011" });
       }
     }
     if (pending) out.push(pending);
@@ -259,14 +262,18 @@ function Chat() {
   }, [messages]);
 
   const fmtTs = (iso) => formatTimeLabel(iso);
-  const formatThread = () => pairs.map((p) => [p.user && `[${fmtTs(p.userTs)}]\nYou: ${p.user}`, p.plain && `[${fmtTs(p.assistantTs)}]\nPLAIN: ${p.plain}`, p.assistant && `[${fmtTs(p.assistantTs)}]\nBRUNEL: ${p.assistant}`].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
+  const formatThread = () => pairs.map((p) => [p.user && `[${fmtTs(p.userTs)}]\nYou: ${p.user}`, p.userAttachment && `[Attached file: ${p.userAttachment.name} · ${formatFileSize(p.userAttachment.size)}]`, p.plain && `[${fmtTs(p.assistantTs)}]\nPLAIN: ${p.plain}`, p.assistant && `[${fmtTs(p.assistantTs)}]\nBRUNEL: ${p.assistant}`].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
   const copyThread = async () => { await navigator.clipboard.writeText(formatThread()); setCopiedKey("thread"); setTimeout(() => setCopiedKey(null), 1200); };
+
+  const renderAttachmentChip = (attachment) => attachment && (
+    <div className="attachment-chip"><Paperclip size={12} /><span>{attachment.name}</span><small>{formatFileSize(attachment.size)}</small></div>
+  );
 
   const renderPanelPairs = (kind) => (
     <div className="chat-body" ref={kind === "plain" ? plainScrollRef : rkScrollRef}>
       {pairs.length === 0 ? <div className="empty-state">Good afternoon. What are we working on?</div> : pairs.map((p, i) => (
         <div key={i} className="pair">
-          {p.user && <div className="bubble bubble-user">{p.user}</div>}
+          {p.user && <div className="bubble bubble-user">{p.user}{renderAttachmentChip(p.userAttachment)}</div>}
           {kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}
           {kind === "rk" && p.assistant !== null && <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>{p.assistant}</div>}
           {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
@@ -280,7 +287,7 @@ function Chat() {
     <div className="chat-body" ref={rkScrollRef}>
       {pairs.length === 0 ? <div className="empty-state">Good afternoon. What are we working on?</div> : pairs.map((p, i) => (
         <div key={i} className="pair">
-          {p.user && <div className="bubble bubble-user">{p.user}</div>}
+          {p.user && <div className="bubble bubble-user">{p.user}{renderAttachmentChip(p.userAttachment)}</div>}
           {p.assistant !== null && <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>{p.assistant}</div>}
           {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
         </div>
@@ -313,8 +320,9 @@ function Chat() {
 
       <div className="panel-input shared-seed-box">
         <div className="speech-status">{fileStatus || (speechSupported ? "" : "speech input unsupported here")}</div>
-        <input ref={fileInputRef} className="hidden-file-input" type="file" accept=".txt,.md,.json,.js,.jsx,.ts,.tsx,.py,.css,.html,.log,.csv,.yml,.yaml,.xml,.sql,text/*,application/json" onChange={attachFile} />
-        <div className="input-row"><button className="file-btn" onClick={openFilePicker} disabled={sending} aria-label="attach file" title="Attach file"><Paperclip size={14} /></button><textarea className="input" placeholder={doubleMode ? "Seed the same prompt..." : "What are we working on?"} value={text} disabled={sending} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} /><button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleSpeech} disabled={sending} aria-label={listening ? "stop voice input" : "start voice input"} title={listening ? "Stop voice input" : "Start voice input"}>{listening ? <MicOff size={14} /> : <Mic size={14} />}</button><button className="send" onClick={send} disabled={sending || !text.trim()} aria-label="send"><Send size={14} /></button></div>
+        {attachedFile && <div className="attachment-row">{renderAttachmentChip(attachedFile)}<button type="button" onClick={() => setAttachedFile(null)} aria-label="remove attached file">×</button></div>}
+        <input ref={fileInputRef} className="hidden-file-input" type="file" onChange={attachFile} />
+        <div className="input-row"><button className="file-btn" onClick={openFilePicker} disabled={sending} aria-label="attach file" title="Attach file"><Paperclip size={14} /></button><textarea className="input" placeholder={doubleMode ? "Seed the same prompt..." : "What are we working on?"} value={text} disabled={sending} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} /><button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleSpeech} disabled={sending} aria-label={listening ? "stop voice input" : "start voice input"} title={listening ? "Stop voice input" : "Start voice input"}>{listening ? <MicOff size={14} /> : <Mic size={14} />}</button><button className="send" onClick={send} disabled={sending || (!text.trim() && !attachedFile)} aria-label="send"><Send size={14} /></button></div>
       </div>
       <div className="footnote"><span>BRUNEL · An ArchePersona product</span><span className="footnote-tag">Powered by ARCHE</span></div>
     </div>
