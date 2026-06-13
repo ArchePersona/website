@@ -10,9 +10,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from anthropic import AsyncAnthropic
 from dotenv import load_dotenv
@@ -71,6 +74,7 @@ SESSION_TTL_DAYS = 90
 SESSION_TTL_SECONDS = SESSION_TTL_DAYS * 24 * 60 * 60
 RESPONSE_MAX_TOKENS = 700
 CYBRARY_PROMPT_CHAR_LIMIT = 12000
+URL_ONLY_RE = re.compile(r"^(https?://|www\.)[^\s]+$", re.IGNORECASE)
 
 ADMIN_EMAILS: set[str] = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 
@@ -139,15 +143,53 @@ async def save_session(session: dict) -> None:
     await db.sessions.replace_one({"session_id": session["session_id"]}, {k: v for k, v in session.items() if k != "_id"}, upsert=True)
 
 
+def normalize_url_reference(value: str) -> str | None:
+    raw = (value or "").strip()
+    if not URL_ONLY_RE.match(raw):
+        return None
+    if raw.lower().startswith("www."):
+        raw = f"https://{raw}"
+    parsed = urlparse(raw)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    return raw
+
+
+async def create_url_cybrary_reference(user_id: str, url: str) -> dict:
+    now = datetime.now(timezone.utc)
+    item_id = f"cyb-{uuid.uuid4().hex}"
+    note = (
+        "This URL has been stored as a Cybrary reference. Live page-reading is not enabled in this demo session yet, "
+        "so the page has not been inspected. When retrieval is enabled, this same item can hold title, metadata, page text, and working context."
+    )
+    item = {
+        "item_id": item_id,
+        "user_id": user_id,
+        "name": urlparse(url).netloc or url,
+        "mime_type": "text/uri-list",
+        "kind": "url",
+        "size": len(url),
+        "source": "link",
+        "status": "reference",
+        "created_at": now,
+        "updated_at": now,
+        "preview_text": note,
+        "extracted_text": None,
+        "vision_summary": None,
+        "url": url,
+        "metadata": {"fetch_status": "not_enabled", "auto_captured": True},
+        "blob_b64": "",
+    }
+    await db.cybrary_items.insert_one(item)
+    return item
+
+
 async def build_cybrary_context(user_id: str, item_ids: list[str]) -> tuple[str, list[dict]]:
     clean_ids = [item_id for item_id in item_ids if item_id]
     if not clean_ids:
         return "", []
 
-    cursor = db.cybrary_items.find(
-        {"user_id": user_id, "item_id": {"$in": clean_ids}},
-        {"_id": 0, "blob_b64": 0},
-    )
+    cursor = db.cybrary_items.find({"user_id": user_id, "item_id": {"$in": clean_ids}}, {"_id": 0, "blob_b64": 0})
     items: list[dict] = []
     async for item in cursor:
         items.append(item)
@@ -158,14 +200,14 @@ async def build_cybrary_context(user_id: str, item_ids: list[str]) -> tuple[str,
     blocks: list[str] = []
     budget = CYBRARY_PROMPT_CHAR_LIMIT
     for item in items:
-        label = f"{item.get('name', item.get('item_id'))} ({item.get('kind', 'file')} · {item.get('mime_type', 'unknown')} · {item.get('size', 0)} bytes)"
+        label = f"{item.get('name', item.get('item_id'))} ({item.get('kind', 'file')} · {item.get('mime_type', 'unknown')} · {item.get('status', 'stored')})"
         text = item.get("extracted_text") or item.get("preview_text") or item.get("vision_summary")
         if text:
             body = str(text)[:budget]
             budget -= len(body)
             blocks.append(f"[Cybrary item: {label}]\n{body}")
         else:
-            blocks.append(f"[Cybrary item: {label}]\nNo extracted content available yet. Treat this as a stored Cybrary object awaiting ingestion.")
+            blocks.append(f"[Cybrary item: {label}]\nThe artifact exists in the Cybrary, but its analysis organ has not populated working context yet.")
         if budget <= 0:
             break
 
@@ -205,7 +247,13 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     user_jwt: str = current_user["token"]
     session = await get_or_create_session(user_id)
 
-    cybrary_context, cybrary_items = await build_cybrary_context(user_id, req.cybrary_item_ids)
+    cybrary_item_ids = list(req.cybrary_item_ids)
+    auto_url = normalize_url_reference(req.message) if not cybrary_item_ids else None
+    if auto_url:
+        url_item = await create_url_cybrary_reference(user_id, auto_url)
+        cybrary_item_ids.append(url_item["item_id"])
+
+    cybrary_context, cybrary_items = await build_cybrary_context(user_id, cybrary_item_ids)
     llm_message = req.message
     if cybrary_context:
         llm_message = f"{req.message}\n\nCybrary context available to Brunel:\n{cybrary_context}"
@@ -233,16 +281,11 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     memory_strings = [m.get("memory_text", "") for m in sb_memories if m.get("memory_text")]
     topic_entropy = update_topic_entropy(session.get("topic_entropy", {}) or {}, req.message, agents=new_signals)
     working_memory_synopsis = build_working_memory_synopsis(topic_entropy)
-    rk_system_prompt = build_rk_system_prompt(
-        agents=new_signals,
-        state=state,
-        zone=zone,
-        mode=mode,
-        directive=directive,
-        flags=flags,
-        history_count=len(rk_history),
-        facts=memory_strings,
-        working_memory=working_memory_synopsis,
+    rk_system_prompt = build_rk_system_prompt(agents=new_signals, state=state, zone=zone, mode=mode, directive=directive, flags=flags, history_count=len(rk_history), facts=memory_strings, working_memory=working_memory_synopsis)
+    rk_system_prompt += (
+        "\n\nCybrary doctrine: Chat owns conversation; Cybrary owns artifacts. "
+        "Do not describe missing tools as permanent personal inability. Say the current demo session has not enabled the relevant organ, "
+        "or that the Cybrary item exists but has not yet been inspected."
     )
 
     try:
@@ -256,20 +299,9 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         logger.exception("Claude call failed")
         raise HTTPException(status_code=502, detail=f"LLM call failed: {e}") from e
 
+    cybrary_public = [{"item_id": i.get("item_id"), "name": i.get("name"), "kind": i.get("kind"), "mime_type": i.get("mime_type"), "size": i.get("size"), "status": i.get("status"), "url": i.get("url")} for i in cybrary_items]
     if rk_text is not None:
-        session["rk_history"].append({
-            "user": req.message,
-            "assistant": rk_text,
-            "ts": datetime.now(timezone.utc).isoformat(),
-            "state": state,
-            "zone": zone,
-            "mode": mode,
-            "weights": new_signals,
-            "flags": chips,
-            "tribunal": tribunal,
-            "cybrary_item_ids": req.cybrary_item_ids,
-            "cybrary_items": [{"item_id": i.get("item_id"), "name": i.get("name"), "kind": i.get("kind"), "mime_type": i.get("mime_type"), "size": i.get("size")} for i in cybrary_items],
-        })
+        session["rk_history"].append({"user": req.message, "assistant": rk_text, "ts": datetime.now(timezone.utc).isoformat(), "state": state, "zone": zone, "mode": mode, "weights": new_signals, "flags": chips, "tribunal": tribunal, "cybrary_item_ids": cybrary_item_ids, "cybrary_items": cybrary_public})
         if supabase_configured():
             existing_texts = {m.get("memory_text") for m in sb_memories}
             for fact in extract_facts(req.message):
@@ -284,7 +316,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         session["topic_entropy"] = topic_entropy
 
     if plain_text is not None:
-        session["plain_history"].append({"user": req.message, "assistant": plain_text, "ts": datetime.now(timezone.utc).isoformat(), "cybrary_item_ids": req.cybrary_item_ids})
+        session["plain_history"].append({"user": req.message, "assistant": plain_text, "ts": datetime.now(timezone.utc).isoformat(), "cybrary_item_ids": cybrary_item_ids})
 
     await save_session(session)
     return ChatResponse(turn=len(session["rk_history"]), rk_response=rk_text, plain_response=plain_text)
@@ -301,10 +333,7 @@ async def get_session(session_id: str, current_user: dict = Depends(get_current_
     if session_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="forbidden")
     session = await get_or_create_session(session_id)
-    return SessionState(
-        session_id=session["session_id"],
-        rk_history=[{"user": t.get("user", ""), "assistant": t.get("assistant", ""), "attachment": (t.get("cybrary_items") or [None])[0]} for t in session.get("rk_history", [])],
-    )
+    return SessionState(session_id=session["session_id"], rk_history=[{"user": t.get("user", ""), "assistant": t.get("assistant", ""), "attachment": (t.get("cybrary_items") or [None])[0]} for t in session.get("rk_history", [])])
 
 
 @api.get("/me")
