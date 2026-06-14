@@ -293,27 +293,13 @@ def derive_pressure(session: dict, now: datetime) -> dict:
     return pressure
 
 
-def build_temporal_packet(
-    *,
-    now: datetime,
-    session: dict,
-    req: ChatRequest,
-    previous_state: str,
-    previous_mode: str,
-    current_state: str,
-    current_mode: str,
-    zone: str,
-    cybrary_items: list[dict],
-    pressure: dict,
-) -> str:
+def build_temporal_packet(*, now: datetime, session: dict, req: ChatRequest, previous_state: str, previous_mode: str, current_state: str, current_mode: str, zone: str, cybrary_items: list[dict], pressure: dict) -> str:
     history = session.get("rk_history", []) or []
     client_time = req.client_ts or "not supplied"
     timezone_label = req.client_timezone or "not supplied"
     state_delta = "unchanged" if previous_state == current_state else f"{previous_state} -> {current_state}"
     mode_delta = "unchanged" if previous_mode == current_mode else f"{previous_mode} -> {current_mode}"
-    artifact_lines = []
-    for item in cybrary_items[:6]:
-        artifact_lines.append(f"- {item.get('name')} [{item.get('kind')} / {item.get('status')}]")
+    artifact_lines = [f"- {item.get('name')} [{item.get('kind')} / {item.get('status')}]" for item in cybrary_items[:6]]
     artifact_text = "\n".join(artifact_lines) if artifact_lines else "- none attached to this turn"
     synopsis = build_recent_synopsis(history, session.get("continuity_synopsis"))
     return (
@@ -361,28 +347,8 @@ def normalize_url_reference(value: str) -> str | None:
 async def create_url_cybrary_reference(user_id: str, url: str) -> dict:
     now = datetime.now(timezone.utc)
     item_id = f"cyb-{uuid.uuid4().hex}"
-    note = (
-        "This URL has been stored as a Cybrary reference. Live page-reading is not enabled in this demo session yet, "
-        "so the page has not been inspected. When retrieval is enabled, this same item can hold title, metadata, page text, and working context."
-    )
-    item = {
-        "item_id": item_id,
-        "user_id": user_id,
-        "name": urlparse(url).netloc or url,
-        "mime_type": "text/uri-list",
-        "kind": "url",
-        "size": len(url),
-        "source": "link",
-        "status": "reference",
-        "created_at": now,
-        "updated_at": now,
-        "preview_text": note,
-        "extracted_text": None,
-        "vision_summary": None,
-        "url": url,
-        "metadata": {"fetch_status": "not_enabled", "auto_captured": True},
-        "blob_b64": "",
-    }
+    note = "This URL has been stored as a Cybrary reference. Live page-reading is not enabled in this demo session yet, so the page has not been inspected. When retrieval is enabled, this same item can hold title, metadata, page text, and working context."
+    item = {"item_id": item_id, "user_id": user_id, "name": urlparse(url).netloc or url, "mime_type": "text/uri-list", "kind": "url", "size": len(url), "source": "link", "status": "reference", "created_at": now, "updated_at": now, "preview_text": note, "extracted_text": None, "vision_summary": None, "url": url, "metadata": {"fetch_status": "not_enabled", "auto_captured": True}, "blob_b64": ""}
     await db.cybrary_items.insert_one(item)
     return item
 
@@ -391,15 +357,12 @@ async def build_cybrary_context(user_id: str, item_ids: list[str]) -> tuple[str,
     clean_ids = [item_id for item_id in item_ids if item_id]
     if not clean_ids:
         return "", []
-
     cursor = db.cybrary_items.find({"user_id": user_id, "item_id": {"$in": clean_ids}}, {"_id": 0, "blob_b64": 0})
     items: list[dict] = []
     async for item in cursor:
         items.append(item)
-
     if not items:
         return "", []
-
     blocks: list[str] = []
     budget = CYBRARY_PROMPT_CHAR_LIMIT
     for item in items:
@@ -413,7 +376,6 @@ async def build_cybrary_context(user_id: str, item_ids: list[str]) -> tuple[str,
             blocks.append(f"[Cybrary item: {label}]\nThe artifact exists in the Cybrary, but its analysis organ has not populated working context yet.")
         if budget <= 0:
             break
-
     return "\n\n".join(blocks), items
 
 
@@ -466,7 +428,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     chips = public_flag_chips(flags)
     new_signals = compute_agent_signals(flags=flags, history=session["rk_history"], prev_signals=session["signals"])
     tribunal = compute_tribunal(new_signals)
-    zone, state = emerge_state(new_signals, tribunal)
+    zone, state = emerge_state(new_signals, tribunal, state_bias=pressure.get("state_bias"))
     mode, directive = map_state_to_mode(state)
 
     override = session.get("admin_override") or {}
@@ -478,18 +440,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     if forced_mode and forced_mode in VALID_MODES:
         mode = forced_mode
 
-    temporal_packet = build_temporal_packet(
-        now=now,
-        session=session,
-        req=req,
-        previous_state=previous_state,
-        previous_mode=previous_mode,
-        current_state=state,
-        current_mode=mode,
-        zone=zone,
-        cybrary_items=cybrary_items,
-        pressure=pressure,
-    )
+    temporal_packet = build_temporal_packet(now=now, session=session, req=req, previous_state=previous_state, previous_mode=previous_mode, current_state=state, current_mode=mode, zone=zone, cybrary_items=cybrary_items, pressure=pressure)
     llm_message = f"{req.message}\n\n{temporal_packet}"
     if cybrary_context:
         llm_message = f"{llm_message}\n\nCybrary context available to Brunel:\n{cybrary_context}"
@@ -504,12 +455,8 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     working_memory_synopsis = build_working_memory_synopsis(topic_entropy)
     rk_system_prompt = build_rk_system_prompt(agents=new_signals, state=state, zone=zone, mode=mode, directive=directive, flags=flags, history_count=len(rk_history), facts=memory_strings, working_memory=working_memory_synopsis)
     rk_system_prompt += (
-        "\n\nCybrary doctrine: Chat owns conversation; Cybrary owns artifacts. "
-        "Do not describe missing tools as permanent personal inability. Say the current demo session has not enabled the relevant organ, "
-        "or that the Cybrary item exists but has not yet been inspected."
-        "\n\nTemporal doctrine: ARCHE is time-aware. Prefer the temporal session packet over raw transcript. "
-        "Use elapsed silence, current timestamp, previous state/mode, current state/mode, state drift, active artifacts, continuity synopsis, momentum, cooling, trust, relationship age, turn count, time decay, entropy pressure, entropy band, and time state bias. "
-        "Never deny awareness of timestamps or session timing when they are supplied in the packet or visible in the conversation."
+        "\n\nCybrary doctrine: Chat owns conversation; Cybrary owns artifacts. Do not describe missing tools as permanent personal inability. Say the current demo session has not enabled the relevant organ, or that the Cybrary item exists but has not yet been inspected."
+        "\n\nTemporal doctrine: ARCHE is time-aware. Prefer the temporal session packet over raw transcript. Use elapsed silence, current timestamp, previous state/mode, current state/mode, state drift, active artifacts, continuity synopsis, momentum, cooling, trust, relationship age, turn count, time decay, entropy pressure, entropy band, and time state bias. Never deny awareness of timestamps or session timing when they are supplied in the packet or visible in the conversation."
     )
 
     try:
@@ -525,34 +472,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
 
     cybrary_public = [{"item_id": i.get("item_id"), "name": i.get("name"), "kind": i.get("kind"), "mime_type": i.get("mime_type"), "size": i.get("size"), "status": i.get("status"), "url": i.get("url")} for i in cybrary_items]
     if rk_text is not None:
-        session["rk_history"].append({
-            "user": req.message,
-            "assistant": rk_text,
-            "ts": now.isoformat(),
-            "client_ts": req.client_ts,
-            "client_timezone": req.client_timezone,
-            "elapsed_since_previous": pressure["elapsed_since_previous"],
-            "momentum": pressure["momentum"],
-            "cooling": pressure["cooling"],
-            "trust": pressure["trust"],
-            "relationship_stage": pressure["relationship_stage"],
-            "relationship_age_days": pressure["relationship_age_days"],
-            "turn_count": pressure["turn_count"],
-            "time_decay": pressure.get("time_decay"),
-            "entropy_pressure": pressure.get("entropy_pressure"),
-            "entropy_band": pressure.get("entropy_band"),
-            "state_bias": pressure.get("state_bias"),
-            "state": state,
-            "zone": zone,
-            "mode": mode,
-            "previous_state": previous_state,
-            "previous_mode": previous_mode,
-            "weights": new_signals,
-            "flags": chips,
-            "tribunal": tribunal,
-            "cybrary_item_ids": cybrary_item_ids,
-            "cybrary_items": cybrary_public,
-        })
+        session["rk_history"].append({"user": req.message, "assistant": rk_text, "ts": now.isoformat(), "client_ts": req.client_ts, "client_timezone": req.client_timezone, "elapsed_since_previous": pressure["elapsed_since_previous"], "momentum": pressure["momentum"], "cooling": pressure["cooling"], "trust": pressure["trust"], "relationship_stage": pressure["relationship_stage"], "relationship_age_days": pressure["relationship_age_days"], "turn_count": pressure["turn_count"], "time_decay": pressure.get("time_decay"), "entropy_pressure": pressure.get("entropy_pressure"), "entropy_band": pressure.get("entropy_band"), "state_bias": pressure.get("state_bias"), "state": state, "zone": zone, "mode": mode, "previous_state": previous_state, "previous_mode": previous_mode, "weights": new_signals, "flags": chips, "tribunal": tribunal, "cybrary_item_ids": cybrary_item_ids, "cybrary_items": cybrary_public})
         if supabase_configured():
             existing_texts = {m.get("memory_text") for m in sb_memories}
             for fact in extract_facts(req.message):
@@ -604,27 +524,8 @@ async def get_session_packet(current_user: dict = Depends(get_current_user)) -> 
     session = await get_or_create_session(current_user["id"])
     pressure = derive_pressure(session, now)
     packet_req = ChatRequest(message="", target="rk_only", client_ts=now.isoformat(), client_timezone="server/UTC")
-    packet = build_temporal_packet(
-        now=now,
-        session=session,
-        req=packet_req,
-        previous_state=session.get("last_state", "unknown"),
-        previous_mode=session.get("last_mode", "unknown"),
-        current_state=session.get("last_state", "unknown"),
-        current_mode=session.get("last_mode", "unknown"),
-        zone=session.get("last_zone", "unknown"),
-        cybrary_items=[],
-        pressure=pressure,
-    )
-    return {
-        "packet": packet,
-        "pressure": pressure,
-        "state": session.get("last_state"),
-        "mode": session.get("last_mode"),
-        "zone": session.get("last_zone"),
-        "continuity_synopsis": session.get("continuity_synopsis"),
-        "topic_entropy": session.get("topic_entropy"),
-    }
+    packet = build_temporal_packet(now=now, session=session, req=packet_req, previous_state=session.get("last_state", "unknown"), previous_mode=session.get("last_mode", "unknown"), current_state=session.get("last_state", "unknown"), current_mode=session.get("last_mode", "unknown"), zone=session.get("last_zone", "unknown"), cybrary_items=[], pressure=pressure)
+    return {"packet": packet, "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
 
 
 @api.get("/me")
