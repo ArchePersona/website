@@ -48,10 +48,18 @@ from supabase_helper import (
     insert_memory,
     supabase_configured,
 )
+from time_organ import derive_pressure as organ_derive_pressure
 from time_pressure import (
     apply_time_decay_to_topic_entropy,
     compute_time_entropy_pressure,
     suggest_time_state_bias,
+)
+from transcript_organ import (
+    TRANSCRIPT_PROMPT_CHAR_LIMIT,
+    TRANSCRIPT_TURN_LIMIT,
+    build_recent_synopsis as organ_build_recent_synopsis,
+    build_session_transcript as organ_build_session_transcript,
+    wants_transcript_context as organ_wants_transcript_context,
 )
 
 ROOT_DIR = Path(__file__).parent
@@ -80,10 +88,7 @@ SESSION_TTL_SECONDS = SESSION_TTL_DAYS * 24 * 60 * 60
 RESPONSE_MAX_TOKENS = 700
 CYBRARY_PROMPT_CHAR_LIMIT = 12000
 SYNOPSIS_TURNS = 8
-TRANSCRIPT_TURN_LIMIT = 40
-TRANSCRIPT_PROMPT_CHAR_LIMIT = 10000
 URL_ONLY_RE = re.compile(r"^(https?://|www\.)[^\s]+$", re.IGNORECASE)
-TRANSCRIPT_INTENT_RE = re.compile(r"\b(transcript|chat history|conversation history|what (?:did|were) we|what have we|recap|summari[sz]e (?:this|our)|previous messages?|earlier in this chat)\b", re.IGNORECASE)
 
 ADMIN_EMAILS: set[str] = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 
@@ -161,6 +166,19 @@ async def save_session(session: dict) -> None:
     await db.sessions.replace_one({"session_id": session["session_id"]}, {k: v for k, v in session.items() if k != "_id"}, upsert=True)
 
 
+# ---------------------------------------------------------------------------
+# DEPRECATED SERVER-LOCAL ORGANS
+#
+# Ownership has moved to:
+#   - time_organ.py
+#   - transcript_organ.py
+#
+# These functions are retained temporarily as a safety fallback during the
+# migration. Active call sites below now route through the daughter files.
+# Remove after deployment verification.
+# ---------------------------------------------------------------------------
+
+
 def parse_iso_datetime(value: Any) -> datetime | None:
     if isinstance(value, datetime):
         return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
@@ -198,20 +216,7 @@ def compact_text(value: str, limit: int = 180) -> str:
 
 
 def build_recent_synopsis(history: list[dict], prior_synopsis: str | None = None) -> str:
-    if not history:
-        return prior_synopsis or "No prior user/Brunel exchange is recorded for this session."
-    lines: list[str] = []
-    for turn in history[-SYNOPSIS_TURNS:]:
-        user_text = compact_text(turn.get("user", ""), 140)
-        assistant_text = compact_text(turn.get("assistant", ""), 140)
-        state = turn.get("state") or "unknown"
-        mode = turn.get("mode") or "unknown"
-        if user_text:
-            lines.append(f"User: {user_text}")
-        if assistant_text:
-            lines.append(f"Brunel [{state}/{mode}]: {assistant_text}")
-    synopsis = "\n".join(lines[-12:]).strip()
-    return synopsis or prior_synopsis or "No usable continuity synopsis yet."
+    return organ_build_recent_synopsis(history, prior_synopsis, limit=SYNOPSIS_TURNS)
 
 
 def format_turn_for_transcript(turn: dict, index: int) -> str:
@@ -232,19 +237,11 @@ def format_turn_for_transcript(turn: dict, index: int) -> str:
 
 
 def build_session_transcript(history: list[dict], limit: int = TRANSCRIPT_TURN_LIMIT, char_limit: int | None = None) -> str:
-    if not history:
-        return "No chat transcript is recorded for this session yet."
-    selected = history[-max(1, limit):]
-    start_index = len(history) - len(selected) + 1
-    blocks = [format_turn_for_transcript(turn, start_index + i) for i, turn in enumerate(selected)]
-    text = "\n\n---\n\n".join(blocks)
-    if char_limit and len(text) > char_limit:
-        return "[Transcript truncated to most recent readable segment.]\n" + text[-char_limit:]
-    return text
+    return organ_build_session_transcript(history, limit=limit, char_limit=char_limit)
 
 
 def wants_transcript_context(message: str) -> bool:
-    return bool(TRANSCRIPT_INTENT_RE.search(message or ""))
+    return organ_wants_transcript_context(message)
 
 
 def derive_cooling(delta_seconds: float | None) -> str:
@@ -302,21 +299,7 @@ def derive_trust(previous_trust: int, cooling: str, turn_count: int) -> int:
 
 
 def derive_pressure(session: dict, now: datetime) -> dict:
-    history = session.get("rk_history", []) or []
-    last_turn = history[-1] if history else None
-    last_ts = parse_iso_datetime(last_turn.get("ts") if last_turn else None)
-    elapsed_seconds = (now - last_ts).total_seconds() if last_ts else None
-    first_seen = parse_iso_datetime(session.get("first_seen") or session.get("created"))
-    prior_turn_count = int(session.get("turn_count") or len(history))
-    cooling = derive_cooling(elapsed_seconds)
-    momentum = derive_momentum(elapsed_seconds, len(history[-6:]))
-    relationship_stage, relationship_age_days = derive_relationship_stage(first_seen, now, prior_turn_count)
-    trust = derive_trust(int(session.get("trust") or 5), cooling, prior_turn_count)
-    time_pressure = compute_time_entropy_pressure(elapsed_seconds, cooling=cooling, momentum=momentum)
-    pressure = {"elapsed_seconds": elapsed_seconds, "elapsed_since_previous": human_elapsed(elapsed_seconds), "last_interaction": last_ts.isoformat() if last_ts else None, "momentum": momentum, "cooling": cooling, "trust": trust, "relationship_stage": relationship_stage, "relationship_age_days": relationship_age_days, "turn_count": prior_turn_count + 1}
-    pressure.update(time_pressure)
-    pressure["state_bias"] = suggest_time_state_bias(time_pressure)
-    return pressure
+    return organ_derive_pressure(session, now)
 
 
 def build_temporal_packet(*, now: datetime, session: dict, req: ChatRequest, previous_state: str, previous_mode: str, current_state: str, current_mode: str, zone: str, cybrary_items: list[dict], pressure: dict) -> str:
@@ -327,7 +310,7 @@ def build_temporal_packet(*, now: datetime, session: dict, req: ChatRequest, pre
     mode_delta = "unchanged" if previous_mode == current_mode else f"{previous_mode} -> {current_mode}"
     artifact_lines = [f"- {item.get('name')} [{item.get('kind')} / {item.get('status')}]" for item in cybrary_items[:6]]
     artifact_text = "\n".join(artifact_lines) if artifact_lines else "- none attached to this turn"
-    synopsis = build_recent_synopsis(history, session.get("continuity_synopsis"))
+    synopsis = organ_build_recent_synopsis(history, session.get("continuity_synopsis"), limit=SYNOPSIS_TURNS)
     return (
         "TEMPORAL SESSION PACKET\n"
         f"Server current time UTC: {now.isoformat()}\n"
@@ -440,7 +423,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     session = await get_or_create_session(user_id)
     previous_state = session.get("last_state", "unknown")
     previous_mode = session.get("last_mode", "unknown")
-    pressure = derive_pressure(session, now)
+    pressure = organ_derive_pressure(session, now)
 
     cybrary_item_ids = list(req.cybrary_item_ids)
     auto_url = normalize_url_reference(req.message) if not cybrary_item_ids else None
@@ -468,8 +451,8 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
 
     temporal_packet = build_temporal_packet(now=now, session=session, req=req, previous_state=previous_state, previous_mode=previous_mode, current_state=state, current_mode=mode, zone=zone, cybrary_items=cybrary_items, pressure=pressure)
     llm_message = f"{req.message}\n\n{temporal_packet}"
-    if wants_transcript_context(req.message):
-        transcript_text = build_session_transcript(session.get("rk_history", []), limit=TRANSCRIPT_TURN_LIMIT, char_limit=TRANSCRIPT_PROMPT_CHAR_LIMIT)
+    if organ_wants_transcript_context(req.message):
+        transcript_text = organ_build_session_transcript(session.get("rk_history", []), limit=TRANSCRIPT_TURN_LIMIT, char_limit=TRANSCRIPT_PROMPT_CHAR_LIMIT)
         llm_message = f"{llm_message}\n\nSELF CHAT TRANSCRIPT CONTEXT:\n{transcript_text}\n\nTranscript doctrine: You can inspect the current session transcript supplied above. Do not say you cannot read your own transcript when this context is present."
     if cybrary_context:
         llm_message = f"{llm_message}\n\nCybrary context available to Brunel:\n{cybrary_context}"
@@ -515,7 +498,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         session["last_mode"] = mode
         session["last_flags"] = chips
         session["topic_entropy"] = topic_entropy
-        session["continuity_synopsis"] = build_recent_synopsis(session.get("rk_history", []), session.get("continuity_synopsis"))
+        session["continuity_synopsis"] = organ_build_recent_synopsis(session.get("rk_history", []), session.get("continuity_synopsis"), limit=SYNOPSIS_TURNS)
         session["turn_count"] = pressure["turn_count"]
         session["momentum"] = pressure["momentum"]
         session["cooling"] = pressure["cooling"]
@@ -552,7 +535,7 @@ async def get_session(session_id: str, current_user: dict = Depends(get_current_
 async def get_session_transcript(current_user: dict = Depends(get_current_user), limit: int = TRANSCRIPT_TURN_LIMIT) -> dict:
     session = await get_or_create_session(current_user["id"])
     safe_limit = max(1, min(200, int(limit or TRANSCRIPT_TURN_LIMIT)))
-    transcript = build_session_transcript(session.get("rk_history", []), limit=safe_limit, char_limit=None)
+    transcript = organ_build_session_transcript(session.get("rk_history", []), limit=safe_limit, char_limit=None)
     return {"session_id": session["session_id"], "turn_count": len(session.get("rk_history", [])), "returned_turns": min(safe_limit, len(session.get("rk_history", []))), "transcript": transcript}
 
 
@@ -560,7 +543,7 @@ async def get_session_transcript(current_user: dict = Depends(get_current_user),
 async def get_session_packet(current_user: dict = Depends(get_current_user)) -> dict:
     now = datetime.now(timezone.utc)
     session = await get_or_create_session(current_user["id"])
-    pressure = derive_pressure(session, now)
+    pressure = organ_derive_pressure(session, now)
     packet_req = ChatRequest(message="", target="rk_only", client_ts=now.isoformat(), client_timezone="server/UTC")
     packet = build_temporal_packet(now=now, session=session, req=packet_req, previous_state=session.get("last_state", "unknown"), previous_mode=session.get("last_mode", "unknown"), current_state=session.get("last_state", "unknown"), current_mode=session.get("last_mode", "unknown"), zone=session.get("last_zone", "unknown"), cybrary_items=[], pressure=pressure)
     return {"packet": packet, "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
