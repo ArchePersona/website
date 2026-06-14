@@ -25,6 +25,7 @@ from fastapi.responses import JSONResponse
 from memory_organ import MemoryOrgan
 from motor.motor_asyncio import AsyncIOMotorClient
 from packet_organ import PacketOrgan
+from pressure_organ import PressureOrgan
 from pydantic import BaseModel, ConfigDict, Field
 from reflection_organ import ReflectionOrgan
 from rk_engine import PLAIN_LLM_SYSTEM_PROMPT, build_rk_system_prompt, default_signals
@@ -69,6 +70,7 @@ context_organ = BrunelContextOrgan(
 )
 artifact_organ = ArtifactOrgan(db=db, prompt_char_limit=CYBRARY_PROMPT_CHAR_LIMIT)
 packet_organ = PacketOrgan(synopsis_turn_limit=SYNOPSIS_TURNS)
+pressure_organ = PressureOrgan()
 memory_organ = MemoryOrgan()
 reflection_organ = ReflectionOrgan()
 state_organ = StateOrgan(valid_states=VALID_STATES, valid_modes=VALID_MODES)
@@ -180,12 +182,13 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     user_id: str = current_user["id"]
     user_jwt: str = current_user["token"]
     session = await get_or_create_session(user_id)
-    context = context_organ.evaluate(session=session, query=req.message, current_time=now)
-    pressure = context.temporal["pressure"]
+    pressure_packet = pressure_organ.evaluate(session=session, now=now)
+    pressure = pressure_packet.pressure
+    context = context_organ.evaluate(session=session, query=req.message, current_time=now, pressure=pressure)
     artifacts = await artifact_organ.evaluate(user_id=user_id, message=req.message, item_ids=req.cybrary_item_ids)
     cybrary_item_ids = artifacts.item_ids
 
-    state_packet = state_organ.evaluate(message=req.message, session=session, state_bias=context.temporal.get("state_bias"))
+    state_packet = state_organ.evaluate(message=req.message, session=session, state_bias=pressure_packet.state_bias)
     flags = state_packet.flags
     new_signals = state_packet.signals
     zone = state_packet.zone
@@ -289,11 +292,12 @@ async def get_session_transcript(current_user: dict = Depends(get_current_user),
 async def get_session_packet(current_user: dict = Depends(get_current_user)) -> dict:
     now = datetime.now(timezone.utc)
     session = await get_or_create_session(current_user["id"])
-    context = context_organ.evaluate(session=session, query="", current_time=now)
-    pressure = context.temporal["pressure"]
+    pressure_packet = pressure_organ.evaluate(session=session, now=now)
+    pressure = pressure_packet.pressure
+    context = context_organ.evaluate(session=session, query="", current_time=now, pressure=pressure)
     empty_req = ChatRequest(message="", target="rk_only", client_ts=now.isoformat(), client_timezone="server/UTC")
     empty_artifacts = await artifact_organ.evaluate(user_id=current_user["id"], message="", item_ids=[])
-    state_packet = state_organ.evaluate(message="", session=session, state_bias=context.temporal.get("state_bias"))
+    state_packet = state_organ.evaluate(message="", session=session, state_bias=pressure_packet.state_bias)
     memory = memory_organ.evaluate(
         session=session,
         user_id=current_user["id"],
@@ -322,7 +326,7 @@ async def get_session_packet(current_user: dict = Depends(get_current_user)) -> 
         current_time=now,
         reflection=reflection,
     )
-    return {"packet": packet.as_dict(), "context": context.as_dict(), "state_packet": state_packet.as_dict(), "memory": memory.as_dict(), "reflection": reflection.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
+    return {"packet": packet.as_dict(), "context": context.as_dict(), "pressure_packet": pressure_packet.as_dict(), "state_packet": state_packet.as_dict(), "memory": memory.as_dict(), "reflection": reflection.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
 
 
 @api.get("/me")
