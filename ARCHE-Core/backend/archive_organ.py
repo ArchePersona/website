@@ -46,6 +46,21 @@ class ArchiveOrgan:
             for item in items
         ]
 
+    def summarize_reflection(self, reflection: Any | None) -> dict[str, Any]:
+        if reflection is None:
+            return {}
+        meaning_record = getattr(reflection, "meaning_record", None)
+        return {
+            "packet_id": getattr(reflection, "packet_id", None),
+            "relationship_themes": getattr(reflection, "relationship_themes", []),
+            "open_projects": getattr(reflection, "open_projects", []),
+            "recent_concerns": getattr(reflection, "recent_concerns", []),
+            "outstanding_promises": getattr(reflection, "outstanding_promises", []),
+            "identity_summary": getattr(reflection, "identity_summary", []),
+            "reflection_summary": getattr(reflection, "reflection_summary", ""),
+            "meaning_record": meaning_record.as_dict() if hasattr(meaning_record, "as_dict") else {},
+        }
+
     def record_turn(
         self,
         *,
@@ -58,10 +73,12 @@ class ArchiveOrgan:
         state_packet: Any,
         memory: Any,
         artifacts: Any,
+        reflection: Any | None = None,
     ) -> ArchivePacket:
         timestamp = (now or datetime.now(timezone.utc)).isoformat()
         cybrary_item_ids = getattr(artifacts, "item_ids", [])
         cybrary_items = self.summarize_artifacts(getattr(artifacts, "items", []) or [])
+        reflection_snapshot = self.summarize_reflection(reflection)
         rk_recorded = False
         plain_recorded = False
 
@@ -94,6 +111,7 @@ class ArchiveOrgan:
                     "tribunal": getattr(state_packet, "tribunal", {}),
                     "cybrary_item_ids": cybrary_item_ids,
                     "cybrary_items": cybrary_items,
+                    "reflection": reflection_snapshot,
                 }
             )
             session["signals"] = getattr(state_packet, "signals", {})
@@ -103,6 +121,9 @@ class ArchiveOrgan:
             session["last_flags"] = getattr(state_packet, "chips", [])
             session["topic_entropy"] = getattr(memory, "topic_entropy", session.get("topic_entropy", {}))
             session["continuity_synopsis"] = build_recent_synopsis(session.get("rk_history", []), session.get("continuity_synopsis"), limit=self.synopsis_turn_limit)
+            session["latest_reflection"] = reflection_snapshot
+            session["reflection_summary"] = reflection_snapshot.get("reflection_summary", "")
+            session["meaning_record"] = reflection_snapshot.get("meaning_record", {})
             session["turn_count"] = pressure.get("turn_count")
             session["momentum"] = pressure.get("momentum")
             session["cooling"] = pressure.get("cooling")
@@ -131,5 +152,5 @@ class ArchiveOrgan:
             turn_count=len(session.get("rk_history", [])),
             rk_recorded=rk_recorded,
             plain_recorded=plain_recorded,
-            metadata={"source": "ArchiveOrgan", "organ_version": "0.1.0"},
+            metadata={"source": "ArchiveOrgan", "organ_version": "0.2.0"},
         )
