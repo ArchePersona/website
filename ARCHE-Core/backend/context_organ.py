@@ -36,7 +36,7 @@ class BrunelContextPacket:
 
 
 class BrunelContextOrgan:
-    """Composes Brunel temporal pressure and transcript context."""
+    """Composes Brunel temporal context and transcript context."""
 
     def __init__(self, transcript_turn_limit: int = 40, transcript_char_limit: int = 10000, synopsis_turn_limit: int = 8) -> None:
         self.transcript_turn_limit = transcript_turn_limit
@@ -50,10 +50,11 @@ class BrunelContextOrgan:
         query: str = "",
         current_time: datetime | None = None,
         force_transcript: bool = False,
+        pressure: dict[str, Any] | None = None,
     ) -> BrunelContextPacket:
         now = current_time or datetime.now(timezone.utc)
         history = list(session.get("rk_history", []) or [])
-        pressure = derive_pressure(session, now)
+        pressure_data = pressure or derive_pressure(session, now)
         transcript_intent = force_transcript or wants_transcript_context(query)
         transcript_text = ""
         summary = ""
@@ -62,20 +63,20 @@ class BrunelContextOrgan:
             summary = build_recent_synopsis(history, session.get("continuity_synopsis"), limit=self.synopsis_turn_limit)
         temporal = {
             "now": now.isoformat(),
-            "previous_interaction": pressure.get("last_interaction"),
-            "elapsed_silence": pressure.get("elapsed_since_previous"),
-            "elapsed_seconds": pressure.get("elapsed_seconds"),
-            "momentum": pressure.get("momentum"),
-            "cooling": pressure.get("cooling"),
-            "trust": pressure.get("trust"),
-            "relationship_stage": pressure.get("relationship_stage"),
-            "relationship_age_days": pressure.get("relationship_age_days"),
-            "turn_count": pressure.get("turn_count"),
-            "time_decay": pressure.get("time_decay"),
-            "entropy_pressure": pressure.get("entropy_pressure"),
-            "entropy_band": pressure.get("entropy_band"),
-            "state_bias": pressure.get("state_bias"),
-            "pressure": pressure,
+            "previous_interaction": pressure_data.get("last_interaction"),
+            "elapsed_silence": pressure_data.get("elapsed_since_previous"),
+            "elapsed_seconds": pressure_data.get("elapsed_seconds"),
+            "momentum": pressure_data.get("momentum"),
+            "cooling": pressure_data.get("cooling"),
+            "trust": pressure_data.get("trust"),
+            "relationship_stage": pressure_data.get("relationship_stage"),
+            "relationship_age_days": pressure_data.get("relationship_age_days"),
+            "turn_count": pressure_data.get("turn_count"),
+            "time_decay": pressure_data.get("time_decay"),
+            "entropy_pressure": pressure_data.get("entropy_pressure"),
+            "entropy_band": pressure_data.get("entropy_band"),
+            "state_bias": pressure_data.get("state_bias"),
+            "pressure": pressure_data,
         }
         transcript = {
             "intent_detected": transcript_intent,
@@ -87,5 +88,5 @@ class BrunelContextOrgan:
         return BrunelContextPacket(
             temporal=temporal,
             transcript=transcript,
-            metadata={"source": "BrunelContextOrgan", "organ_version": "0.2.0", "query": query},
+            metadata={"source": "BrunelContextOrgan", "organ_version": "0.3.0", "query": query, "pressure_source": "external" if pressure else "derived"},
         )
