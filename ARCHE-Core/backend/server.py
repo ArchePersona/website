@@ -10,23 +10,19 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlparse
 
 from anthropic import AsyncAnthropic
+from artifact_organ import ArtifactOrgan
+from context_organ import BrunelContextOrgan
+from cybrary import build_cybrary_router
 from dotenv import load_dotenv
 from emergentintegrations.llm.openai import OpenAISpeechToText
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, ConfigDict, Field
-from starlette.middleware.cors import CORSMiddleware
-
-from context_organ import BrunelContextOrgan
-from cybrary import build_cybrary_router
 from rk_engine import (
     PLAIN_LLM_SYSTEM_PROMPT,
     build_rk_system_prompt,
@@ -41,6 +37,7 @@ from rk_engine import (
     run_sniffers,
     update_topic_entropy,
 )
+from starlette.middleware.cors import CORSMiddleware
 from supabase_helper import (
     categorize_fact,
     fetch_recent_memories,
@@ -82,12 +79,12 @@ SESSION_TTL_SECONDS = SESSION_TTL_DAYS * 24 * 60 * 60
 RESPONSE_MAX_TOKENS = 700
 CYBRARY_PROMPT_CHAR_LIMIT = 12000
 SYNOPSIS_TURNS = 8
-URL_ONLY_RE = re.compile(r"^(https?://|www\.)[^\s]+$", re.IGNORECASE)
 context_organ = BrunelContextOrgan(
     transcript_turn_limit=TRANSCRIPT_TURN_LIMIT,
     transcript_char_limit=TRANSCRIPT_PROMPT_CHAR_LIMIT,
     synopsis_turn_limit=SYNOPSIS_TURNS,
 )
+artifact_organ = ArtifactOrgan(db=db, prompt_char_limit=CYBRARY_PROMPT_CHAR_LIMIT)
 
 ADMIN_EMAILS: set[str] = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 
@@ -204,53 +201,6 @@ def build_temporal_packet(*, now: datetime, session: dict, req: ChatRequest, pre
     )
 
 
-def normalize_url_reference(value: str) -> str | None:
-    raw = (value or "").strip()
-    if not URL_ONLY_RE.match(raw):
-        return None
-    if raw.lower().startswith("www."):
-        raw = f"https://{raw}"
-    parsed = urlparse(raw)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        return None
-    return raw
-
-
-async def create_url_cybrary_reference(user_id: str, url: str) -> dict:
-    now = datetime.now(timezone.utc)
-    item_id = f"cyb-{uuid.uuid4().hex}"
-    note = "This URL has been stored as a Cybrary reference. Live page-reading is not enabled in this demo session yet, so the page has not been inspected. When retrieval is enabled, this same item can hold title, metadata, page text, and working context."
-    item = {"item_id": item_id, "user_id": user_id, "name": urlparse(url).netloc or url, "mime_type": "text/uri-list", "kind": "url", "size": len(url), "source": "link", "status": "reference", "created_at": now, "updated_at": now, "preview_text": note, "extracted_text": None, "vision_summary": None, "url": url, "metadata": {"fetch_status": "not_enabled", "auto_captured": True}, "blob_b64": ""}
-    await db.cybrary_items.insert_one(item)
-    return item
-
-
-async def build_cybrary_context(user_id: str, item_ids: list[str]) -> tuple[str, list[dict]]:
-    clean_ids = [item_id for item_id in item_ids if item_id]
-    if not clean_ids:
-        return "", []
-    cursor = db.cybrary_items.find({"user_id": user_id, "item_id": {"$in": clean_ids}}, {"_id": 0, "blob_b64": 0})
-    items: list[dict] = []
-    async for item in cursor:
-        items.append(item)
-    if not items:
-        return "", []
-    blocks: list[str] = []
-    budget = CYBRARY_PROMPT_CHAR_LIMIT
-    for item in items:
-        label = f"{item.get('name', item.get('item_id'))} ({item.get('kind', 'file')} · {item.get('mime_type', 'unknown')} · {item.get('status', 'stored')})"
-        text = item.get("extracted_text") or item.get("preview_text") or item.get("vision_summary")
-        if text:
-            body = str(text)[:budget]
-            budget -= len(body)
-            blocks.append(f"[Cybrary item: {label}]\n{body}")
-        else:
-            blocks.append(f"[Cybrary item: {label}]\nThe artifact exists in the Cybrary, but its analysis organ has not populated working context yet.")
-        if budget <= 0:
-            break
-    return "\n\n".join(blocks), items
-
-
 async def call_rk2(user_message: str, system_prompt: str, rk_history: list[dict]) -> str:
     messages: list[dict[str, str]] = []
     for turn in rk_history[-PROMPT_HISTORY_TURNS:]:
@@ -288,14 +238,9 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     previous_mode = session.get("last_mode", "unknown")
     context = context_organ.evaluate(session=session, query=req.message, current_time=now)
     pressure = context.temporal["pressure"]
-
-    cybrary_item_ids = list(req.cybrary_item_ids)
-    auto_url = normalize_url_reference(req.message) if not cybrary_item_ids else None
-    if auto_url:
-        url_item = await create_url_cybrary_reference(user_id, auto_url)
-        cybrary_item_ids.append(url_item["item_id"])
-
-    cybrary_context, cybrary_items = await build_cybrary_context(user_id, cybrary_item_ids)
+    artifacts = await artifact_organ.evaluate(user_id=user_id, message=req.message, item_ids=req.cybrary_item_ids)
+    cybrary_item_ids = artifacts.item_ids
+    cybrary_items = artifacts.items
 
     flags = run_sniffers(req.message)
     chips = public_flag_chips(flags)
@@ -318,8 +263,8 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     if context.transcript.get("intent_detected"):
         transcript_text = context.transcript.get("transcript_text") or "No transcript context available."
         llm_message = f"{llm_message}\n\nSELF CHAT TRANSCRIPT CONTEXT:\n{transcript_text}\n\nTranscript doctrine: You can inspect the current session transcript supplied above. Do not say you cannot read your own transcript when this context is present."
-    if cybrary_context:
-        llm_message = f"{llm_message}\n\nCybrary context available to Brunel:\n{cybrary_context}"
+    if artifacts.prompt_context:
+        llm_message = f"{llm_message}\n\nCybrary context available to Brunel:\n{artifacts.prompt_context}"
 
     rk_text: str | None = None
     plain_text: str | None = None
