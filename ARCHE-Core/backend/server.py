@@ -21,32 +21,23 @@ from dotenv import load_dotenv
 from emergentintegrations.llm.openai import OpenAISpeechToText
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
+from memory_organ import MemoryOrgan
 from motor.motor_asyncio import AsyncIOMotorClient
 from packet_organ import PacketOrgan
 from pydantic import BaseModel, ConfigDict, Field
 from rk_engine import (
     PLAIN_LLM_SYSTEM_PROMPT,
     build_rk_system_prompt,
-    build_working_memory_synopsis,
     compute_agent_signals,
     compute_tribunal,
     default_signals,
     emerge_state,
-    extract_facts,
     map_state_to_mode,
     public_flag_chips,
     run_sniffers,
-    update_topic_entropy,
 )
 from starlette.middleware.cors import CORSMiddleware
-from supabase_helper import (
-    categorize_fact,
-    fetch_recent_memories,
-    get_current_user,
-    insert_memory,
-    supabase_configured,
-)
-from time_pressure import apply_time_decay_to_topic_entropy
+from supabase_helper import get_current_user
 from transcript_organ import (
     TRANSCRIPT_PROMPT_CHAR_LIMIT,
     TRANSCRIPT_TURN_LIMIT,
@@ -87,6 +78,7 @@ context_organ = BrunelContextOrgan(
 )
 artifact_organ = ArtifactOrgan(db=db, prompt_char_limit=CYBRARY_PROMPT_CHAR_LIMIT)
 packet_organ = PacketOrgan(synopsis_turn_limit=SYNOPSIS_TURNS)
+memory_organ = MemoryOrgan()
 
 ADMIN_EMAILS: set[str] = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 
@@ -238,12 +230,15 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     rk_text: str | None = None
     plain_text: str | None = None
     rk_history = session["rk_history"]
-    sb_memories = fetch_recent_memories(user_jwt=user_jwt, user_id=user_id) if supabase_configured() else []
-    memory_strings = [m.get("memory_text", "") for m in sb_memories if m.get("memory_text")]
-    raw_topic_entropy = update_topic_entropy(session.get("topic_entropy", {}) or {}, req.message, agents=new_signals)
-    topic_entropy = apply_time_decay_to_topic_entropy(raw_topic_entropy, pressure)
-    working_memory_synopsis = build_working_memory_synopsis(topic_entropy)
-    rk_system_prompt = build_rk_system_prompt(agents=new_signals, state=state, zone=zone, mode=mode, directive=directive, flags=flags, history_count=len(rk_history), facts=memory_strings, working_memory=working_memory_synopsis)
+    memory = memory_organ.evaluate(
+        session=session,
+        user_id=user_id,
+        user_jwt=user_jwt,
+        message=req.message,
+        pressure=pressure,
+        signals=new_signals,
+    )
+    rk_system_prompt = build_rk_system_prompt(agents=new_signals, state=state, zone=zone, mode=mode, directive=directive, flags=flags, history_count=len(rk_history), facts=memory.facts, working_memory=memory.working_memory)
     rk_system_prompt += (
         "\n\nCybrary doctrine: Chat owns conversation; Cybrary owns artifacts. Do not describe missing tools as permanent personal inability. Say the current demo session has not enabled the relevant organ, or that the Cybrary item exists but has not yet been inspected."
         "\n\nTemporal doctrine: ARCHE is time-aware. Prefer the temporal session packet over raw transcript. Use elapsed silence, current timestamp, previous state/mode, current state/mode, state drift, active artifacts, continuity synopsis, momentum, cooling, trust, relationship age, turn count, time decay, entropy pressure, entropy band, and time state bias. Never deny awareness of timestamps or session timing when they are supplied in the packet or visible in the conversation."
@@ -264,18 +259,13 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     cybrary_public = [{"item_id": i.get("item_id"), "name": i.get("name"), "kind": i.get("kind"), "mime_type": i.get("mime_type"), "size": i.get("size"), "status": i.get("status"), "url": i.get("url")} for i in cybrary_items]
     if rk_text is not None:
         session["rk_history"].append({"user": req.message, "assistant": rk_text, "ts": now.isoformat(), "client_ts": req.client_ts, "client_timezone": req.client_timezone, "elapsed_since_previous": pressure["elapsed_since_previous"], "momentum": pressure["momentum"], "cooling": pressure["cooling"], "trust": pressure["trust"], "relationship_stage": pressure["relationship_stage"], "relationship_age_days": pressure["relationship_age_days"], "turn_count": pressure["turn_count"], "time_decay": pressure.get("time_decay"), "entropy_pressure": pressure.get("entropy_pressure"), "entropy_band": pressure.get("entropy_band"), "state_bias": pressure.get("state_bias"), "state": state, "zone": zone, "mode": mode, "previous_state": previous_state, "previous_mode": previous_mode, "weights": new_signals, "flags": chips, "tribunal": tribunal, "cybrary_item_ids": cybrary_item_ids, "cybrary_items": cybrary_public})
-        if supabase_configured():
-            existing_texts = {m.get("memory_text") for m in sb_memories}
-            for fact in extract_facts(req.message):
-                if fact in existing_texts:
-                    continue
-                insert_memory(user_jwt=user_jwt, user_id=user_id, memory_text=fact, category=categorize_fact(fact))
+        memory_organ.learn(user_id=user_id, user_jwt=user_jwt, packet=memory)
         session["signals"] = new_signals
         session["last_state"] = state
         session["last_zone"] = zone
         session["last_mode"] = mode
         session["last_flags"] = chips
-        session["topic_entropy"] = topic_entropy
+        session["topic_entropy"] = memory.topic_entropy
         session["continuity_synopsis"] = organ_build_recent_synopsis(session.get("rk_history", []), session.get("continuity_synopsis"), limit=SYNOPSIS_TURNS)
         session["turn_count"] = pressure["turn_count"]
         session["momentum"] = pressure["momentum"]
@@ -337,7 +327,15 @@ async def get_session_packet(current_user: dict = Depends(get_current_user)) -> 
         zone=session.get("last_zone", "unknown"),
         current_time=now,
     )
-    return {"packet": packet.as_dict(), "context": context.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
+    memory = memory_organ.evaluate(
+        session=session,
+        user_id=current_user["id"],
+        user_jwt=current_user["token"],
+        message="",
+        pressure=pressure,
+        signals=session.get("signals", default_signals()),
+    )
+    return {"packet": packet.as_dict(), "context": context.as_dict(), "memory": memory.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
 
 
 @api.get("/me")
