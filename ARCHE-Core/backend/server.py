@@ -25,18 +25,9 @@ from memory_organ import MemoryOrgan
 from motor.motor_asyncio import AsyncIOMotorClient
 from packet_organ import PacketOrgan
 from pydantic import BaseModel, ConfigDict, Field
-from rk_engine import (
-    PLAIN_LLM_SYSTEM_PROMPT,
-    build_rk_system_prompt,
-    compute_agent_signals,
-    compute_tribunal,
-    default_signals,
-    emerge_state,
-    map_state_to_mode,
-    public_flag_chips,
-    run_sniffers,
-)
+from rk_engine import PLAIN_LLM_SYSTEM_PROMPT, build_rk_system_prompt, default_signals
 from starlette.middleware.cors import CORSMiddleware
+from state_organ import StateOrgan
 from supabase_helper import get_current_user
 from transcript_organ import (
     TRANSCRIPT_PROMPT_CHAR_LIMIT,
@@ -71,6 +62,9 @@ SESSION_TTL_SECONDS = SESSION_TTL_DAYS * 24 * 60 * 60
 RESPONSE_MAX_TOKENS = 700
 CYBRARY_PROMPT_CHAR_LIMIT = 12000
 SYNOPSIS_TURNS = 8
+VALID_STATES = {"Warm", "Curious", "Focused", "Guarded", "Avoidant", "Stuck", "Retreating", "Gentle", "Shutdown"}
+VALID_MODES = {"NORMAL", "RELATIONAL", "EXPLORATORY", "CLINICAL", "PROTECTIVE"}
+
 context_organ = BrunelContextOrgan(
     transcript_turn_limit=TRANSCRIPT_TURN_LIMIT,
     transcript_char_limit=TRANSCRIPT_PROMPT_CHAR_LIMIT,
@@ -79,6 +73,7 @@ context_organ = BrunelContextOrgan(
 artifact_organ = ArtifactOrgan(db=db, prompt_char_limit=CYBRARY_PROMPT_CHAR_LIMIT)
 packet_organ = PacketOrgan(synopsis_turn_limit=SYNOPSIS_TURNS)
 memory_organ = MemoryOrgan()
+state_organ = StateOrgan(valid_states=VALID_STATES, valid_modes=VALID_MODES)
 
 ADMIN_EMAILS: set[str] = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 
@@ -88,9 +83,6 @@ def require_admin(current_user: dict) -> None:
     if not ADMIN_EMAILS or email not in ADMIN_EMAILS:
         raise HTTPException(status_code=403, detail="admin only")
 
-
-VALID_STATES = {"Warm", "Curious", "Focused", "Guarded", "Avoidant", "Stuck", "Retreating", "Gentle", "Shutdown"}
-VALID_MODES = {"NORMAL", "RELATIONAL", "EXPLORATORY", "CLINICAL", "PROTECTIVE"}
 
 app = FastAPI(title="BRUNEL — Powered by ARCHE")
 api = APIRouter(prefix="/api")
@@ -189,29 +181,23 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     user_id: str = current_user["id"]
     user_jwt: str = current_user["token"]
     session = await get_or_create_session(user_id)
-    previous_state = session.get("last_state", "unknown")
-    previous_mode = session.get("last_mode", "unknown")
     context = context_organ.evaluate(session=session, query=req.message, current_time=now)
     pressure = context.temporal["pressure"]
     artifacts = await artifact_organ.evaluate(user_id=user_id, message=req.message, item_ids=req.cybrary_item_ids)
     cybrary_item_ids = artifacts.item_ids
     cybrary_items = artifacts.items
 
-    flags = run_sniffers(req.message)
-    chips = public_flag_chips(flags)
-    new_signals = compute_agent_signals(flags=flags, history=session["rk_history"], prev_signals=session["signals"])
-    tribunal = compute_tribunal(new_signals)
-    zone, state = emerge_state(new_signals, tribunal, state_bias=context.temporal.get("state_bias"))
-    mode, directive = map_state_to_mode(state)
-
-    override = session.get("admin_override") or {}
-    forced_state = override.get("state")
-    forced_mode = override.get("mode")
-    if forced_state and forced_state in VALID_STATES:
-        state = forced_state
-        mode, directive = map_state_to_mode(state)
-    if forced_mode and forced_mode in VALID_MODES:
-        mode = forced_mode
+    state_packet = state_organ.evaluate(message=req.message, session=session, state_bias=context.temporal.get("state_bias"))
+    flags = state_packet.flags
+    chips = state_packet.chips
+    new_signals = state_packet.signals
+    tribunal = state_packet.tribunal
+    zone = state_packet.zone
+    state = state_packet.state
+    mode = state_packet.mode
+    directive = state_packet.directive
+    previous_state = state_packet.previous_state
+    previous_mode = state_packet.previous_mode
 
     packet = packet_organ.build(
         session=session,
@@ -315,16 +301,17 @@ async def get_session_packet(current_user: dict = Depends(get_current_user)) -> 
     pressure = context.temporal["pressure"]
     empty_req = ChatRequest(message="", target="rk_only", client_ts=now.isoformat(), client_timezone="server/UTC")
     empty_artifacts = await artifact_organ.evaluate(user_id=current_user["id"], message="", item_ids=[])
+    state_packet = state_organ.evaluate(message="", session=session, state_bias=context.temporal.get("state_bias"))
     packet = packet_organ.build(
         session=session,
         req=empty_req,
         context=context,
         artifacts=empty_artifacts,
-        previous_state=session.get("last_state", "unknown"),
-        previous_mode=session.get("last_mode", "unknown"),
-        state=session.get("last_state", "unknown"),
-        mode=session.get("last_mode", "unknown"),
-        zone=session.get("last_zone", "unknown"),
+        previous_state=state_packet.previous_state,
+        previous_mode=state_packet.previous_mode,
+        state=state_packet.state,
+        mode=state_packet.mode,
+        zone=state_packet.zone,
         current_time=now,
     )
     memory = memory_organ.evaluate(
@@ -333,9 +320,9 @@ async def get_session_packet(current_user: dict = Depends(get_current_user)) -> 
         user_jwt=current_user["token"],
         message="",
         pressure=pressure,
-        signals=session.get("signals", default_signals()),
+        signals=state_packet.signals,
     )
-    return {"packet": packet.as_dict(), "context": context.as_dict(), "memory": memory.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
+    return {"packet": packet.as_dict(), "context": context.as_dict(), "state_packet": state_packet.as_dict(), "memory": memory.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
 
 
 @api.get("/me")
