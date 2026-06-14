@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from anthropic import AsyncAnthropic
+from archive_organ import ArchiveOrgan
 from artifact_organ import ArtifactOrgan
 from context_organ import BrunelContextOrgan
 from cybrary import build_cybrary_router
@@ -29,12 +30,7 @@ from rk_engine import PLAIN_LLM_SYSTEM_PROMPT, build_rk_system_prompt, default_s
 from starlette.middleware.cors import CORSMiddleware
 from state_organ import StateOrgan
 from supabase_helper import get_current_user
-from transcript_organ import (
-    TRANSCRIPT_PROMPT_CHAR_LIMIT,
-    TRANSCRIPT_TURN_LIMIT,
-    build_recent_synopsis as organ_build_recent_synopsis,
-    build_session_transcript as organ_build_session_transcript,
-)
+from transcript_organ import TRANSCRIPT_PROMPT_CHAR_LIMIT, TRANSCRIPT_TURN_LIMIT, build_session_transcript as organ_build_session_transcript
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
@@ -74,6 +70,7 @@ artifact_organ = ArtifactOrgan(db=db, prompt_char_limit=CYBRARY_PROMPT_CHAR_LIMI
 packet_organ = PacketOrgan(synopsis_turn_limit=SYNOPSIS_TURNS)
 memory_organ = MemoryOrgan()
 state_organ = StateOrgan(valid_states=VALID_STATES, valid_modes=VALID_MODES)
+archive_organ = ArchiveOrgan(synopsis_turn_limit=SYNOPSIS_TURNS)
 
 ADMIN_EMAILS: set[str] = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 
@@ -185,27 +182,22 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     pressure = context.temporal["pressure"]
     artifacts = await artifact_organ.evaluate(user_id=user_id, message=req.message, item_ids=req.cybrary_item_ids)
     cybrary_item_ids = artifacts.item_ids
-    cybrary_items = artifacts.items
 
     state_packet = state_organ.evaluate(message=req.message, session=session, state_bias=context.temporal.get("state_bias"))
     flags = state_packet.flags
-    chips = state_packet.chips
     new_signals = state_packet.signals
-    tribunal = state_packet.tribunal
     zone = state_packet.zone
     state = state_packet.state
     mode = state_packet.mode
     directive = state_packet.directive
-    previous_state = state_packet.previous_state
-    previous_mode = state_packet.previous_mode
 
     packet = packet_organ.build(
         session=session,
         req=req,
         context=context,
         artifacts=artifacts,
-        previous_state=previous_state,
-        previous_mode=previous_mode,
+        previous_state=state_packet.previous_state,
+        previous_mode=state_packet.previous_mode,
         state=state,
         mode=mode,
         zone=zone,
@@ -242,33 +234,22 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         logger.exception("Claude call failed")
         raise HTTPException(status_code=502, detail=f"LLM call failed: {e}") from e
 
-    cybrary_public = [{"item_id": i.get("item_id"), "name": i.get("name"), "kind": i.get("kind"), "mime_type": i.get("mime_type"), "size": i.get("size"), "status": i.get("status"), "url": i.get("url")} for i in cybrary_items]
     if rk_text is not None:
-        session["rk_history"].append({"user": req.message, "assistant": rk_text, "ts": now.isoformat(), "client_ts": req.client_ts, "client_timezone": req.client_timezone, "elapsed_since_previous": pressure["elapsed_since_previous"], "momentum": pressure["momentum"], "cooling": pressure["cooling"], "trust": pressure["trust"], "relationship_stage": pressure["relationship_stage"], "relationship_age_days": pressure["relationship_age_days"], "turn_count": pressure["turn_count"], "time_decay": pressure.get("time_decay"), "entropy_pressure": pressure.get("entropy_pressure"), "entropy_band": pressure.get("entropy_band"), "state_bias": pressure.get("state_bias"), "state": state, "zone": zone, "mode": mode, "previous_state": previous_state, "previous_mode": previous_mode, "weights": new_signals, "flags": chips, "tribunal": tribunal, "cybrary_item_ids": cybrary_item_ids, "cybrary_items": cybrary_public})
         memory_organ.learn(user_id=user_id, user_jwt=user_jwt, packet=memory)
-        session["signals"] = new_signals
-        session["last_state"] = state
-        session["last_zone"] = zone
-        session["last_mode"] = mode
-        session["last_flags"] = chips
-        session["topic_entropy"] = memory.topic_entropy
-        session["continuity_synopsis"] = organ_build_recent_synopsis(session.get("rk_history", []), session.get("continuity_synopsis"), limit=SYNOPSIS_TURNS)
-        session["turn_count"] = pressure["turn_count"]
-        session["momentum"] = pressure["momentum"]
-        session["cooling"] = pressure["cooling"]
-        session["trust"] = pressure["trust"]
-        session["relationship_stage"] = pressure["relationship_stage"]
-        session["relationship_age_days"] = pressure["relationship_age_days"]
-        session["time_decay"] = pressure.get("time_decay")
-        session["entropy_pressure"] = pressure.get("entropy_pressure")
-        session["entropy_band"] = pressure.get("entropy_band")
-        session["state_bias"] = pressure.get("state_bias")
-
-    if plain_text is not None:
-        session["plain_history"].append({"user": req.message, "assistant": plain_text, "ts": now.isoformat(), "client_ts": req.client_ts, "cybrary_item_ids": cybrary_item_ids})
+    archive = archive_organ.record_turn(
+        session=session,
+        req=req,
+        now=now,
+        rk_text=rk_text,
+        plain_text=plain_text,
+        pressure=pressure,
+        state_packet=state_packet,
+        memory=memory,
+        artifacts=artifacts,
+    )
 
     await save_session(session)
-    return ChatResponse(turn=len(session["rk_history"]), rk_response=rk_text, plain_response=plain_text)
+    return ChatResponse(turn=archive.turn_count, rk_response=rk_text, plain_response=plain_text)
 
 
 @api.post("/reset")
