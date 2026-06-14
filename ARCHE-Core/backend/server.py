@@ -22,6 +22,7 @@ from emergentintegrations.llm.openai import OpenAISpeechToText
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorClient
+from packet_organ import PacketOrgan
 from pydantic import BaseModel, ConfigDict, Field
 from rk_engine import (
     PLAIN_LLM_SYSTEM_PROMPT,
@@ -85,6 +86,7 @@ context_organ = BrunelContextOrgan(
     synopsis_turn_limit=SYNOPSIS_TURNS,
 )
 artifact_organ = ArtifactOrgan(db=db, prompt_char_limit=CYBRARY_PROMPT_CHAR_LIMIT)
+packet_organ = PacketOrgan(synopsis_turn_limit=SYNOPSIS_TURNS)
 
 ADMIN_EMAILS: set[str] = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 
@@ -162,45 +164,6 @@ async def save_session(session: dict) -> None:
     await db.sessions.replace_one({"session_id": session["session_id"]}, {k: v for k, v in session.items() if k != "_id"}, upsert=True)
 
 
-def build_temporal_packet(*, now: datetime, session: dict, req: ChatRequest, previous_state: str, previous_mode: str, current_state: str, current_mode: str, zone: str, cybrary_items: list[dict], pressure: dict) -> str:
-    history = session.get("rk_history", []) or []
-    client_time = req.client_ts or "not supplied"
-    timezone_label = req.client_timezone or "not supplied"
-    state_delta = "unchanged" if previous_state == current_state else f"{previous_state} -> {current_state}"
-    mode_delta = "unchanged" if previous_mode == current_mode else f"{previous_mode} -> {current_mode}"
-    artifact_lines = [f"- {item.get('name')} [{item.get('kind')} / {item.get('status')}]" for item in cybrary_items[:6]]
-    artifact_text = "\n".join(artifact_lines) if artifact_lines else "- none attached to this turn"
-    synopsis = organ_build_recent_synopsis(history, session.get("continuity_synopsis"), limit=SYNOPSIS_TURNS)
-    return (
-        "TEMPORAL SESSION PACKET\n"
-        f"Server current time UTC: {now.isoformat()}\n"
-        f"Client displayed timestamp: {client_time}\n"
-        f"Client timezone label: {timezone_label}\n"
-        f"Previous interaction timestamp: {pressure.get('last_interaction') or 'none recorded'}\n"
-        f"Elapsed silence since previous interaction: {pressure['elapsed_since_previous']}\n"
-        f"Relationship age: {pressure['relationship_age_days']} days\n"
-        f"Relationship stage: {pressure['relationship_stage']}\n"
-        f"Turn count: {pressure['turn_count']}\n"
-        f"Momentum: {pressure['momentum']}\n"
-        f"Cooling: {pressure['cooling']}\n"
-        f"Trust: {pressure['trust']}/10\n"
-        f"Time decay: {pressure.get('time_decay', 0.0)}\n"
-        f"Entropy pressure: {pressure.get('entropy_pressure', 0.0)}\n"
-        f"Entropy band: {pressure.get('entropy_band', 'stable')}\n"
-        f"Time state bias: {pressure.get('state_bias', 'maintain')}\n"
-        f"Previous state/mode: {previous_state} / {previous_mode}\n"
-        f"Current inferred state/mode/zone: {current_state} / {current_mode} / {zone}\n"
-        f"State drift: {state_delta}\n"
-        f"Mode drift: {mode_delta}\n"
-        "Continuity synopsis, not raw transcript:\n"
-        f"{synopsis}\n"
-        "Active Cybrary artifacts this turn:\n"
-        f"{artifact_text}\n"
-        "Temporal doctrine: ARCHE is time-aware. Use current time, prior interaction time, elapsed silence, momentum, cooling, trust, relationship age, time decay, entropy pressure, state bias, state drift, and synopsis as working context. "
-        "If timestamps are visible or supplied in the packet, do not deny awareness of them. Answer from session evidence before claiming limitation."
-    )
-
-
 async def call_rk2(user_message: str, system_prompt: str, rk_history: list[dict]) -> str:
     messages: list[dict[str, str]] = []
     for turn in rk_history[-PROMPT_HISTORY_TURNS:]:
@@ -258,13 +221,19 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     if forced_mode and forced_mode in VALID_MODES:
         mode = forced_mode
 
-    temporal_packet = build_temporal_packet(now=now, session=session, req=req, previous_state=previous_state, previous_mode=previous_mode, current_state=state, current_mode=mode, zone=zone, cybrary_items=cybrary_items, pressure=pressure)
-    llm_message = f"{req.message}\n\n{temporal_packet}"
-    if context.transcript.get("intent_detected"):
-        transcript_text = context.transcript.get("transcript_text") or "No transcript context available."
-        llm_message = f"{llm_message}\n\nSELF CHAT TRANSCRIPT CONTEXT:\n{transcript_text}\n\nTranscript doctrine: You can inspect the current session transcript supplied above. Do not say you cannot read your own transcript when this context is present."
-    if artifacts.prompt_context:
-        llm_message = f"{llm_message}\n\nCybrary context available to Brunel:\n{artifacts.prompt_context}"
+    packet = packet_organ.build(
+        session=session,
+        req=req,
+        context=context,
+        artifacts=artifacts,
+        previous_state=previous_state,
+        previous_mode=previous_mode,
+        state=state,
+        mode=mode,
+        zone=zone,
+        current_time=now,
+    )
+    llm_message = f"{req.message}\n\n{packet.prompt}"
 
     rk_text: str | None = None
     plain_text: str | None = None
@@ -354,9 +323,21 @@ async def get_session_packet(current_user: dict = Depends(get_current_user)) -> 
     session = await get_or_create_session(current_user["id"])
     context = context_organ.evaluate(session=session, query="", current_time=now)
     pressure = context.temporal["pressure"]
-    packet_req = ChatRequest(message="", target="rk_only", client_ts=now.isoformat(), client_timezone="server/UTC")
-    packet = build_temporal_packet(now=now, session=session, req=packet_req, previous_state=session.get("last_state", "unknown"), previous_mode=session.get("last_mode", "unknown"), current_state=session.get("last_state", "unknown"), current_mode=session.get("last_mode", "unknown"), zone=session.get("last_zone", "unknown"), cybrary_items=[], pressure=pressure)
-    return {"packet": packet, "context": context.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
+    empty_req = ChatRequest(message="", target="rk_only", client_ts=now.isoformat(), client_timezone="server/UTC")
+    empty_artifacts = await artifact_organ.evaluate(user_id=current_user["id"], message="", item_ids=[])
+    packet = packet_organ.build(
+        session=session,
+        req=empty_req,
+        context=context,
+        artifacts=empty_artifacts,
+        previous_state=session.get("last_state", "unknown"),
+        previous_mode=session.get("last_mode", "unknown"),
+        state=session.get("last_state", "unknown"),
+        mode=session.get("last_mode", "unknown"),
+        zone=session.get("last_zone", "unknown"),
+        current_time=now,
+    )
+    return {"packet": packet.as_dict(), "context": context.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
 
 
 @api.get("/me")
