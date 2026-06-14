@@ -1,8 +1,8 @@
 """Brunel-local Packet Organ bridge.
 
 PacketOrgan owns prompt packet assembly. Server should orchestrate organs, not
-know how temporal, transcript, artifact, and doctrine context is formatted for
-the model.
+know how temporal, transcript, artifact, reflection, and doctrine context is
+formatted for the model.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ class PromptPacket:
     temporal_prompt: str = ""
     transcript_prompt: str = ""
     artifact_prompt: str = ""
+    reflection_prompt: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
@@ -47,6 +48,7 @@ class PacketOrgan:
         mode: str,
         zone: str,
         current_time: datetime | None = None,
+        reflection: Any | None = None,
     ) -> PromptPacket:
         now = current_time or datetime.now(timezone.utc)
         pressure = context.temporal.get("pressure", {})
@@ -64,7 +66,10 @@ class PacketOrgan:
         )
         transcript_prompt = self.build_transcript_prompt(context)
         artifact_prompt = self.build_artifact_prompt(artifacts)
+        reflection_prompt = self.build_reflection_prompt(reflection)
         prompt_parts = [temporal_prompt]
+        if reflection_prompt:
+            prompt_parts.append(reflection_prompt)
         if transcript_prompt:
             prompt_parts.append(transcript_prompt)
         if artifact_prompt:
@@ -74,7 +79,8 @@ class PacketOrgan:
             temporal_prompt=temporal_prompt,
             transcript_prompt=transcript_prompt,
             artifact_prompt=artifact_prompt,
-            metadata={"source": "PacketOrgan", "organ_version": "0.1.0"},
+            reflection_prompt=reflection_prompt,
+            metadata={"source": "PacketOrgan", "organ_version": "0.2.0"},
         )
 
     def build_temporal_prompt(
@@ -144,3 +150,15 @@ class PacketOrgan:
         if not prompt_context:
             return ""
         return f"Cybrary context available to Brunel:\n{prompt_context}"
+
+    def build_reflection_prompt(self, reflection: Any | None) -> str:
+        if reflection is None:
+            return ""
+        summary = getattr(reflection, "reflection_summary", "") or ""
+        if not summary:
+            return ""
+        return (
+            "REFLECTION PACKET — meaning continuity, not transcript replay:\n"
+            f"{summary}\n\n"
+            "Reflection doctrine: Prefer stable meaning, open projects, outstanding promises, and identity continuity over raw transcript replay."
+        )
