@@ -16,6 +16,13 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
+from time_organ import derive_pressure
+from transcript_organ import (
+    build_recent_synopsis,
+    build_session_transcript,
+    wants_transcript_context,
+)
+
 
 @dataclass(slots=True)
 class BrunelContextPacket:
@@ -28,73 +35,36 @@ class BrunelContextPacket:
         return asdict(self)
 
 
-def compact_text(value: str, limit: int = 180) -> str:
-    text = " ".join((value or "").split()).strip()
-    return text[: limit - 1] + "..." if len(text) > limit else text
-
-
-def format_transcript_turn(turn: dict[str, Any], index: int) -> str:
-    ts = turn.get("client_ts") or turn.get("ts") or "time unknown"
-    elapsed = turn.get("elapsed_since_previous")
-    state = turn.get("state") or "unknown"
-    mode = turn.get("mode") or "unknown"
-    header = f"Turn {index} - {ts} - State {state} - Mode {mode}"
-    if elapsed:
-        header += f" - elapsed since prior: {elapsed}"
-    parts = [header]
-    if turn.get("user"):
-        parts.append(f"User: {turn.get('user')}")
-    if turn.get("assistant"):
-        parts.append(f"Brunel: {turn.get('assistant')}")
-    return "\n".join(parts)
-
-
-def build_transcript_text(history: list[dict[str, Any]], limit: int = 40, char_limit: int = 10000) -> str:
-    if not history:
-        return "No chat transcript is recorded for this session yet."
-    selected = history[-max(1, limit):]
-    start_index = len(history) - len(selected) + 1
-    text = "\n\n---\n\n".join(format_transcript_turn(turn, start_index + i) for i, turn in enumerate(selected))
-    if len(text) > char_limit:
-        return "[Transcript truncated to most recent readable segment.]\n" + text[-char_limit:]
-    return text
-
-
-def summarize_recent(history: list[dict[str, Any]], limit: int = 8) -> str:
-    if not history:
-        return "No recent transcript activity is recorded."
-    lines: list[str] = []
-    for turn in history[-max(1, limit):]:
-        user_text = compact_text(turn.get("user", ""), 120)
-        state = turn.get("state") or "unknown"
-        mode = turn.get("mode") or "unknown"
-        if user_text:
-            lines.append(f"- User: {user_text} [{state}/{mode}]")
-    return "\n".join(lines) if lines else "Recent transcript exists, but no user text was available."
-
-
 class BrunelContextOrgan:
     """Composes Brunel temporal pressure and transcript context."""
 
-    def __init__(self, transcript_turn_limit: int = 40, transcript_char_limit: int = 10000) -> None:
+    def __init__(self, transcript_turn_limit: int = 40, transcript_char_limit: int = 10000, synopsis_turn_limit: int = 8) -> None:
         self.transcript_turn_limit = transcript_turn_limit
         self.transcript_char_limit = transcript_char_limit
+        self.synopsis_turn_limit = synopsis_turn_limit
 
     def evaluate(
         self,
         *,
         session: dict[str, Any],
-        pressure: dict[str, Any],
         query: str = "",
-        transcript_intent: bool = False,
         current_time: datetime | None = None,
+        force_transcript: bool = False,
     ) -> BrunelContextPacket:
         now = current_time or datetime.now(timezone.utc)
         history = list(session.get("rk_history", []) or [])
+        pressure = derive_pressure(session, now)
+        transcript_intent = force_transcript or wants_transcript_context(query)
+        transcript_text = ""
+        summary = ""
+        if transcript_intent:
+            transcript_text = build_session_transcript(history, limit=self.transcript_turn_limit, char_limit=self.transcript_char_limit)
+            summary = build_recent_synopsis(history, session.get("continuity_synopsis"), limit=self.synopsis_turn_limit)
         temporal = {
             "now": now.isoformat(),
             "previous_interaction": pressure.get("last_interaction"),
             "elapsed_silence": pressure.get("elapsed_since_previous"),
+            "elapsed_seconds": pressure.get("elapsed_seconds"),
             "momentum": pressure.get("momentum"),
             "cooling": pressure.get("cooling"),
             "trust": pressure.get("trust"),
@@ -105,16 +75,17 @@ class BrunelContextOrgan:
             "entropy_pressure": pressure.get("entropy_pressure"),
             "entropy_band": pressure.get("entropy_band"),
             "state_bias": pressure.get("state_bias"),
+            "pressure": pressure,
         }
         transcript = {
             "intent_detected": transcript_intent,
             "turn_count": len(history),
             "returned_turns": min(self.transcript_turn_limit, len(history)) if transcript_intent else 0,
-            "summary": summarize_recent(history) if transcript_intent else "",
-            "transcript_text": build_transcript_text(history, self.transcript_turn_limit, self.transcript_char_limit) if transcript_intent else "",
+            "summary": summary,
+            "transcript_text": transcript_text,
         }
         return BrunelContextPacket(
             temporal=temporal,
             transcript=transcript,
-            metadata={"source": "BrunelContextOrgan", "organ_version": "0.1.0", "query": query},
+            metadata={"source": "BrunelContextOrgan", "organ_version": "0.2.0", "query": query},
         )
