@@ -256,6 +256,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         state_packet=state_packet,
         memory=memory,
         artifacts=artifacts,
+        reflection=reflection,
     )
 
     await save_session(session)
