@@ -26,6 +26,7 @@ from memory_organ import MemoryOrgan
 from motor.motor_asyncio import AsyncIOMotorClient
 from packet_organ import PacketOrgan
 from pydantic import BaseModel, ConfigDict, Field
+from reflection_organ import ReflectionOrgan
 from rk_engine import PLAIN_LLM_SYSTEM_PROMPT, build_rk_system_prompt, default_signals
 from starlette.middleware.cors import CORSMiddleware
 from state_organ import StateOrgan
@@ -69,6 +70,7 @@ context_organ = BrunelContextOrgan(
 artifact_organ = ArtifactOrgan(db=db, prompt_char_limit=CYBRARY_PROMPT_CHAR_LIMIT)
 packet_organ = PacketOrgan(synopsis_turn_limit=SYNOPSIS_TURNS)
 memory_organ = MemoryOrgan()
+reflection_organ = ReflectionOrgan()
 state_organ = StateOrgan(valid_states=VALID_STATES, valid_modes=VALID_MODES)
 archive_organ = ArchiveOrgan(synopsis_turn_limit=SYNOPSIS_TURNS)
 
@@ -191,20 +193,6 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     mode = state_packet.mode
     directive = state_packet.directive
 
-    packet = packet_organ.build(
-        session=session,
-        req=req,
-        context=context,
-        artifacts=artifacts,
-        previous_state=state_packet.previous_state,
-        previous_mode=state_packet.previous_mode,
-        state=state,
-        mode=mode,
-        zone=zone,
-        current_time=now,
-    )
-    llm_message = f"{req.message}\n\n{packet.prompt}"
-
     rk_text: str | None = None
     plain_text: str | None = None
     rk_history = session["rk_history"]
@@ -216,10 +204,32 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         pressure=pressure,
         signals=new_signals,
     )
+    reflection = reflection_organ.evaluate(
+        session=session,
+        memory=memory,
+        context=context,
+        recent_history=rk_history,
+        current_time=now,
+    )
+    packet = packet_organ.build(
+        session=session,
+        req=req,
+        context=context,
+        artifacts=artifacts,
+        previous_state=state_packet.previous_state,
+        previous_mode=state_packet.previous_mode,
+        state=state,
+        mode=mode,
+        zone=zone,
+        current_time=now,
+        reflection=reflection,
+    )
+    llm_message = f"{req.message}\n\n{packet.prompt}"
     rk_system_prompt = build_rk_system_prompt(agents=new_signals, state=state, zone=zone, mode=mode, directive=directive, flags=flags, history_count=len(rk_history), facts=memory.facts, working_memory=memory.working_memory)
     rk_system_prompt += (
         "\n\nCybrary doctrine: Chat owns conversation; Cybrary owns artifacts. Do not describe missing tools as permanent personal inability. Say the current demo session has not enabled the relevant organ, or that the Cybrary item exists but has not yet been inspected."
         "\n\nTemporal doctrine: ARCHE is time-aware. Prefer the temporal session packet over raw transcript. Use elapsed silence, current timestamp, previous state/mode, current state/mode, state drift, active artifacts, continuity synopsis, momentum, cooling, trust, relationship age, turn count, time decay, entropy pressure, entropy band, and time state bias. Never deny awareness of timestamps or session timing when they are supplied in the packet or visible in the conversation."
+        "\n\nReflection doctrine: Prefer the reflection packet for stable meaning continuity, open projects, outstanding promises, and identity summary. Use transcript context as evidence, not as the primary continuity substrate."
         "\n\nTranscript doctrine: When a SELF CHAT TRANSCRIPT CONTEXT block is supplied, treat it as readable current-session evidence. You may summarize it, answer questions about it, and quote small relevant fragments. Do not claim that chat transcripts are unavailable when that block is present."
     )
 
@@ -283,6 +293,21 @@ async def get_session_packet(current_user: dict = Depends(get_current_user)) -> 
     empty_req = ChatRequest(message="", target="rk_only", client_ts=now.isoformat(), client_timezone="server/UTC")
     empty_artifacts = await artifact_organ.evaluate(user_id=current_user["id"], message="", item_ids=[])
     state_packet = state_organ.evaluate(message="", session=session, state_bias=context.temporal.get("state_bias"))
+    memory = memory_organ.evaluate(
+        session=session,
+        user_id=current_user["id"],
+        user_jwt=current_user["token"],
+        message="",
+        pressure=pressure,
+        signals=state_packet.signals,
+    )
+    reflection = reflection_organ.evaluate(
+        session=session,
+        memory=memory,
+        context=context,
+        recent_history=session.get("rk_history", []),
+        current_time=now,
+    )
     packet = packet_organ.build(
         session=session,
         req=empty_req,
@@ -294,16 +319,9 @@ async def get_session_packet(current_user: dict = Depends(get_current_user)) -> 
         mode=state_packet.mode,
         zone=state_packet.zone,
         current_time=now,
+        reflection=reflection,
     )
-    memory = memory_organ.evaluate(
-        session=session,
-        user_id=current_user["id"],
-        user_jwt=current_user["token"],
-        message="",
-        pressure=pressure,
-        signals=state_packet.signals,
-    )
-    return {"packet": packet.as_dict(), "context": context.as_dict(), "state_packet": state_packet.as_dict(), "memory": memory.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
+    return {"packet": packet.as_dict(), "context": context.as_dict(), "state_packet": state_packet.as_dict(), "memory": memory.as_dict(), "reflection": reflection.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
 
 
 @api.get("/me")
