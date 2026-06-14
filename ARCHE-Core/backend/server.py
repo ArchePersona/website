@@ -25,6 +25,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.cors import CORSMiddleware
 
+from context_organ import BrunelContextOrgan
 from cybrary import build_cybrary_router
 from rk_engine import (
     PLAIN_LLM_SYSTEM_PROMPT,
@@ -47,14 +48,12 @@ from supabase_helper import (
     insert_memory,
     supabase_configured,
 )
-from time_organ import derive_pressure as organ_derive_pressure
 from time_pressure import apply_time_decay_to_topic_entropy
 from transcript_organ import (
     TRANSCRIPT_PROMPT_CHAR_LIMIT,
     TRANSCRIPT_TURN_LIMIT,
     build_recent_synopsis as organ_build_recent_synopsis,
     build_session_transcript as organ_build_session_transcript,
-    wants_transcript_context as organ_wants_transcript_context,
 )
 
 ROOT_DIR = Path(__file__).parent
@@ -84,6 +83,11 @@ RESPONSE_MAX_TOKENS = 700
 CYBRARY_PROMPT_CHAR_LIMIT = 12000
 SYNOPSIS_TURNS = 8
 URL_ONLY_RE = re.compile(r"^(https?://|www\.)[^\s]+$", re.IGNORECASE)
+context_organ = BrunelContextOrgan(
+    transcript_turn_limit=TRANSCRIPT_TURN_LIMIT,
+    transcript_char_limit=TRANSCRIPT_PROMPT_CHAR_LIMIT,
+    synopsis_turn_limit=SYNOPSIS_TURNS,
+)
 
 ADMIN_EMAILS: set[str] = {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
 
@@ -282,7 +286,8 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     session = await get_or_create_session(user_id)
     previous_state = session.get("last_state", "unknown")
     previous_mode = session.get("last_mode", "unknown")
-    pressure = organ_derive_pressure(session, now)
+    context = context_organ.evaluate(session=session, query=req.message, current_time=now)
+    pressure = context.temporal["pressure"]
 
     cybrary_item_ids = list(req.cybrary_item_ids)
     auto_url = normalize_url_reference(req.message) if not cybrary_item_ids else None
@@ -296,7 +301,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
     chips = public_flag_chips(flags)
     new_signals = compute_agent_signals(flags=flags, history=session["rk_history"], prev_signals=session["signals"])
     tribunal = compute_tribunal(new_signals)
-    zone, state = emerge_state(new_signals, tribunal, state_bias=pressure.get("state_bias"))
+    zone, state = emerge_state(new_signals, tribunal, state_bias=context.temporal.get("state_bias"))
     mode, directive = map_state_to_mode(state)
 
     override = session.get("admin_override") or {}
@@ -310,8 +315,8 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
 
     temporal_packet = build_temporal_packet(now=now, session=session, req=req, previous_state=previous_state, previous_mode=previous_mode, current_state=state, current_mode=mode, zone=zone, cybrary_items=cybrary_items, pressure=pressure)
     llm_message = f"{req.message}\n\n{temporal_packet}"
-    if organ_wants_transcript_context(req.message):
-        transcript_text = organ_build_session_transcript(session.get("rk_history", []), limit=TRANSCRIPT_TURN_LIMIT, char_limit=TRANSCRIPT_PROMPT_CHAR_LIMIT)
+    if context.transcript.get("intent_detected"):
+        transcript_text = context.transcript.get("transcript_text") or "No transcript context available."
         llm_message = f"{llm_message}\n\nSELF CHAT TRANSCRIPT CONTEXT:\n{transcript_text}\n\nTranscript doctrine: You can inspect the current session transcript supplied above. Do not say you cannot read your own transcript when this context is present."
     if cybrary_context:
         llm_message = f"{llm_message}\n\nCybrary context available to Brunel:\n{cybrary_context}"
@@ -402,10 +407,11 @@ async def get_session_transcript(current_user: dict = Depends(get_current_user),
 async def get_session_packet(current_user: dict = Depends(get_current_user)) -> dict:
     now = datetime.now(timezone.utc)
     session = await get_or_create_session(current_user["id"])
-    pressure = organ_derive_pressure(session, now)
+    context = context_organ.evaluate(session=session, query="", current_time=now)
+    pressure = context.temporal["pressure"]
     packet_req = ChatRequest(message="", target="rk_only", client_ts=now.isoformat(), client_timezone="server/UTC")
     packet = build_temporal_packet(now=now, session=session, req=packet_req, previous_state=session.get("last_state", "unknown"), previous_mode=session.get("last_mode", "unknown"), current_state=session.get("last_state", "unknown"), current_mode=session.get("last_mode", "unknown"), zone=session.get("last_zone", "unknown"), cybrary_items=[], pressure=pressure)
-    return {"packet": packet, "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
+    return {"packet": packet, "context": context.as_dict(), "pressure": pressure, "state": session.get("last_state"), "mode": session.get("last_mode"), "zone": session.get("last_zone"), "continuity_synopsis": session.get("continuity_synopsis"), "topic_entropy": session.get("topic_entropy")}
 
 
 @api.get("/me")
