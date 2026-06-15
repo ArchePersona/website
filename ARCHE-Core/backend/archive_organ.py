@@ -61,6 +61,11 @@ class ArchiveOrgan:
             "meaning_record": meaning_record.as_dict() if hasattr(meaning_record, "as_dict") else {},
         }
 
+    def summarize_pressure(self, pressure_packet: Any | None, pressure: dict[str, Any]) -> dict[str, Any]:
+        if pressure_packet is None:
+            return dict(pressure or {})
+        return pressure_packet.as_dict() if hasattr(pressure_packet, "as_dict") else dict(pressure or {})
+
     def record_turn(
         self,
         *,
@@ -74,11 +79,13 @@ class ArchiveOrgan:
         memory: Any,
         artifacts: Any,
         reflection: Any | None = None,
+        pressure_packet: Any | None = None,
     ) -> ArchivePacket:
         timestamp = (now or datetime.now(timezone.utc)).isoformat()
         cybrary_item_ids = getattr(artifacts, "item_ids", [])
         cybrary_items = self.summarize_artifacts(getattr(artifacts, "items", []) or [])
         reflection_snapshot = self.summarize_reflection(reflection)
+        pressure_snapshot = self.summarize_pressure(pressure_packet, pressure)
         rk_recorded = False
         plain_recorded = False
 
@@ -111,6 +118,7 @@ class ArchiveOrgan:
                     "tribunal": getattr(state_packet, "tribunal", {}),
                     "cybrary_item_ids": cybrary_item_ids,
                     "cybrary_items": cybrary_items,
+                    "pressure_packet": pressure_snapshot,
                     "reflection": reflection_snapshot,
                 }
             )
@@ -121,6 +129,7 @@ class ArchiveOrgan:
             session["last_flags"] = getattr(state_packet, "chips", [])
             session["topic_entropy"] = getattr(memory, "topic_entropy", session.get("topic_entropy", {}))
             session["continuity_synopsis"] = build_recent_synopsis(session.get("rk_history", []), session.get("continuity_synopsis"), limit=self.synopsis_turn_limit)
+            session["latest_pressure"] = pressure_snapshot
             session["latest_reflection"] = reflection_snapshot
             session["reflection_summary"] = reflection_snapshot.get("reflection_summary", "")
             session["meaning_record"] = reflection_snapshot.get("meaning_record", {})
@@ -152,5 +161,5 @@ class ArchiveOrgan:
             turn_count=len(session.get("rk_history", [])),
             rk_recorded=rk_recorded,
             plain_recorded=plain_recorded,
-            metadata={"source": "ArchiveOrgan", "organ_version": "0.2.0"},
+            metadata={"source": "ArchiveOrgan", "organ_version": "0.3.0"},
         )
