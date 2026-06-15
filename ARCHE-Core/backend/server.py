@@ -260,6 +260,7 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
         memory=memory,
         artifacts=artifacts,
         reflection=reflection,
+        pressure_packet=pressure_packet,
     )
 
     await save_session(session)
