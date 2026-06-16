@@ -283,3 +283,81 @@
     flex-basis: 34px;
   }
 }
+
+/* Desktop/chat geometry repair. */
+.chat-grid.double {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 18px !important;
+  overflow: visible !important;
+}
+
+.panel,
+.panel-plain,
+.panel-rk,
+.chat-body,
+.pair {
+  min-width: 0 !important;
+}
+
+.chat-body {
+  gap: 22px !important;
+  overflow-x: hidden !important;
+  scroll-padding: 18px;
+}
+
+.pair {
+  gap: 8px !important;
+}
+
+.bubble {
+  box-sizing: border-box;
+  max-width: min(78%, 54ch) !important;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.bubble-user {
+  margin-left: auto;
+  margin-right: 0;
+}
+
+.bubble-assistant,
+.bubble-plain {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.pair-timestamp {
+  display: block !important;
+  width: auto !important;
+  max-width: 100%;
+  align-self: flex-start;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--dim) !important;
+  padding: 0 !important;
+  margin: 0 0 4px !important;
+  line-height: 1.3;
+  overflow: visible !important;
+  white-space: normal !important;
+}
+
+.bubble-user + .pair-timestamp {
+  align-self: flex-end;
+  text-align: right;
+}
+
+@media (max-width: 900px) {
+  .chat-grid.double {
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden !important;
+  }
+  .bubble {
+    max-width: 92% !important;
+  }
+  .chat-body {
+    overflow-x: hidden !important;
+  }
+}
