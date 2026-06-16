@@ -26,6 +26,7 @@ const formatAbsoluteTime = (iso) => { if (!iso) return ""; const d = new Date(is
 const formatRelativeTime = (iso) => { if (!iso) return ""; const then = new Date(iso).getTime(); if (Number.isNaN(then)) return ""; const m = Math.floor((Date.now() - then) / 60000); if (m < 1) return "just now"; if (m < 60) return `${m}m ago`; const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`; const d = Math.floor(h / 24); if (d < 30) return `${d}d ago`; const mo = Math.floor(d / 30); if (mo < 12) return `${mo}mo ago`; return `${Math.floor(d / 365)}y ago`; };
 const formatTimeLabel = (iso) => { const a = formatAbsoluteTime(iso); const r = formatRelativeTime(iso); return a ? `${a} · ${r}` : ""; };
 const loadStoredSkin = () => { try { return window.localStorage.getItem("brunel-skin") || "desk"; } catch (_) { return "desk"; } };
+const loadInitialViewMode = () => { try { return window.matchMedia("(min-width: 901px)").matches ? "double" : "single"; } catch (_) { return "single"; } };
 
 function Chat() {
   const { user, session, signOut } = useAuth();
@@ -41,7 +42,7 @@ function Chat() {
   const [fileStatus, setFileStatus] = useState("");
   const [cybraryItems, setCybraryItems] = useState([]);
   const [attachedItem, setAttachedItem] = useState(null);
-  const [viewMode, setViewMode] = useState("double");
+  const [viewMode, setViewMode] = useState(loadInitialViewMode);
   const [drawerKind, setDrawerKind] = useState(null);
   const [drawerClosing, setDrawerClosing] = useState(false);
   const [skin, setSkin] = useState(loadStoredSkin);
@@ -107,17 +108,13 @@ function Chat() {
     const localItem = { id: `cyb-local-${Date.now()}`, name: file.name, size: file.size, type: file.type || "file", source: "upload", created_at: nowIso(), status: "local", file };
     setFileStatus(`${file.name} entering Cybrary…`);
     try {
-      const form = new FormData();
-      form.append("file", file);
+      const form = new FormData(); form.append("file", file);
       const r = await axios.post(`${API}/cybrary/upload`, form, { headers: { ...authHeader, "Content-Type": "multipart/form-data" }, timeout: 45000 });
       const saved = { ...r.data, id: r.data.id || r.data.item_id, type: r.data.mime_type || r.data.type || r.data.kind, status: r.data.status || "stored" };
       setCybraryItems((items) => [saved, ...items.filter((item) => item.id !== saved.id)]);
-      setAttachedItem(saved);
-      setFileStatus(`${file.name} stored in Cybrary`);
+      setAttachedItem(saved); setFileStatus(`${file.name} stored in Cybrary`);
     } catch (_) {
-      setCybraryItems((items) => [localItem, ...items]);
-      setAttachedItem(localItem);
-      setFileStatus(`${file.name} staged locally for Cybrary`);
+      setCybraryItems((items) => [localItem, ...items]); setAttachedItem(localItem); setFileStatus(`${file.name} staged locally for Cybrary`);
     }
     window.setTimeout(() => setFileStatus(""), 2400);
   };
@@ -147,23 +144,58 @@ function Chat() {
     if (pending) out.push(pending); return out;
   }, [messages]);
   const fmtTs = (iso) => formatTimeLabel(iso);
-  const formatThread = () => pairs.map((p) => [p.user && `[${fmtTs(p.userTs)}]\nYou: ${p.user}`, p.userAttachment && `[Cybrary item: ${p.userAttachment.name} · ${formatFileSize(p.userAttachment.size)}]`, p.plain && `[${fmtTs(p.assistantTs)}]\nPLAIN: ${p.plain}`, p.assistant && `[${fmtTs(p.assistantTs)}]\nBRUNEL: ${p.assistant}`].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
+  const formatThread = () => pairs.map((p) => [p.user && `[${fmtTs(p.userTs)}]\nYou: ${p.user}`, p.userAttachment && `[Cybrary item: ${p.userAttachment.name} · ${formatFileSize(p.userAttachment.size)}]`, p.plain && `[${fmtTs(p.assistantTs)}]\nStandard AI: ${p.plain}`, p.assistant && `[${fmtTs(p.assistantTs)}]\nBRUNEL: ${p.assistant}`].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
+  const copyThread = async () => { await navigator.clipboard.writeText(formatThread()); setCopiedKey("thread"); window.setTimeout(() => setCopiedKey(null), 1200); };
 
-  const renderResponseContent = (p) => {
-    if (doubleMode) return (
-      <div className="dual-response-grid">
-        <div className={`response-panel brunel-panel ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}><div className="response-panel-title">BRUNEL</div><p>{p.assistant}</p></div>
-        <div className="response-panel plain-panel"><div className="response-panel-title">Standard AI</div><p>{p.plain || "Waiting for comparison…"}</p></div>
-      </div>
-    );
-    return <p className={getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}>{p.assistant}</p>;
-  };
+  const renderPanelPairs = (kind) => (
+    <div className="chat-body" ref={kind === "plain" ? plainScrollRef : rkScrollRef}>
+      {pairs.length === 0 ? <div className="empty-state">waiting for prompt</div> : pairs.map((p, i) => (
+        <div key={i} className="pair">
+          {p.user && <div className="bubble bubble-user">{p.user}{p.userAttachment && <div className="attachment-chip">{p.userAttachment.name} · {formatFileSize(p.userAttachment.size)}</div>}</div>}
+          {kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}
+          {kind === "rk" && p.assistant !== null && <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>{p.assistant}</div>}
+          {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
+        </div>
+      ))}
+      {sending && <div className="thinking">considering</div>}
+    </div>
+  );
+  const renderSinglePairs = () => (
+    <div className="chat-body" ref={rkScrollRef}>
+      {pairs.length === 0 ? <div className="empty-state">What are we working on?</div> : pairs.map((p, i) => (
+        <div key={i} className="pair">
+          {p.user && <div className="bubble bubble-user">{p.user}{p.userAttachment && <div className="attachment-chip">{p.userAttachment.name} · {formatFileSize(p.userAttachment.size)}</div>}</div>}
+          {p.assistant !== null && <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>{p.assistant}</div>}
+          {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
+        </div>
+      ))}
+      {sending && <div className="thinking">considering</div>}
+    </div>
+  );
 
   return (
-    <div className={`app-shell brunel-skin-${skin}`}>
-      <header className="top-bar"><div><p className="eyebrow">ARCHEPersona</p><h1>BRUNEL</h1></div><div className="top-actions"><button onClick={() => setViewMode(doubleMode ? "single" : "double")}>{doubleMode ? "Single View" : "Dual View"}</button><button className="icon-btn" onClick={() => openDrawer("settings")} title="Settings"><Settings size={16} /></button>{isAdmin && <button className="admin-link" onClick={() => navigate("/admin")}><Shield size={16} />Admin</button>}<button onClick={signOut}><LogOut size={16} />Exit</button></div></header>
-      <main className={`chat-layout ${doubleMode ? "double" : "single"}`}><section className="chat-card"><div className="conversation" ref={rkScrollRef}>{pairs.length === 0 && <div className="empty"><p>Start a conversation. Brunel will answer in comparison mode by default.</p></div>}{pairs.map((p, i) => <div className="exchange" key={`pair-${i}`}><div className="bubble user"><p>{p.user}</p>{p.userAttachment && <div className="attachment-chip"><Paperclip size={14} />{p.userAttachment.name} · {formatFileSize(p.userAttachment.size)}</div>}{p.userTs && <span className="timestamp">{fmtTs(p.userTs)}</span>}</div>{p.assistant && <div className="bubble assistant">{renderResponseContent(p)}{p.assistantTs && <span className="timestamp">{fmtTs(p.assistantTs)}</span>}</div>}</div>)}</div><div className="composer">{attachedItem && <div className="attachment-chip active"><Paperclip size={14} />{attachedItem.name} · {formatFileSize(attachedItem.size)}<button onClick={() => setAttachedItem(null)}><X size={12} /></button></div>}{fileStatus && <div className="file-status">{fileStatus}</div>}<textarea value={text} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} placeholder="Talk to Brunel…" /><input ref={fileInputRef} type="file" hidden onChange={attachFile} /><button onClick={openFilePicker} title="Attach file"><Paperclip size={18} /></button><button onClick={() => openDrawer("library")} title="Open Cybrary"><Library size={18} /></button><button onClick={toggleSpeech} disabled={!speechSupported} title="Voice input">{listening ? <MicOff size={18} /> : <Mic size={18} />}</button><button onClick={send} disabled={sending}><Send size={18} /></button><button onClick={() => navigator.clipboard.writeText(formatThread())} title="Copy transcript"><ClipboardCopy size={18} /></button><button onClick={clearLocalChat} title="Clear local chat"><Trash2 size={18} /></button></div></section></main>
-      {drawerKind && <aside className={`side-drawer ${drawerClosing ? "closing" : "open"}`}><div className="drawer-head"><h3>{drawerKind === "settings" ? "Brunel Controls" : "Cybrary"}</h3><button onClick={closeDrawer}><X size={18} /></button></div>{drawerKind === "settings" ? <div className="drawer-body"><label>Skin<select value={skin} onChange={(e) => setSkin(e.target.value)}>{SKINS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></label><label>Model<select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>{MODELS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></label><label>View<select value={viewMode} onChange={(e) => setViewMode(e.target.value)}><option value="double">Dual View</option><option value="single">Single View</option></select></label></div> : <div className="drawer-body library-list">{cybraryItems.length === 0 ? <p>No Cybrary items yet.</p> : cybraryItems.map((item) => <button key={item.id} className="library-item" onClick={() => { setAttachedItem(item); closeDrawer(); }}><strong>{item.name}</strong><span>{item.kind || item.type} · {formatFileSize(item.size)} · {item.status || "stored"}</span></button>)}</div>}</aside>}
+    <div className={`app brunel-skin-${skin}`}>
+      <header className="topbar brunel-shell-topbar">
+        <div className="topbar-left"><button className="drawer-toggle" onClick={() => openDrawer("library")} title="Cybrary"><Library size={18} /></button></div>
+        <div className="brand brand-centered"><div className="brand-name">BRUNEL</div><div className="brand-sub">The Builder</div></div>
+        <div className="topbar-right"><button className="drawer-toggle" onClick={() => openDrawer("settings")} title="Settings"><Settings size={18} /></button></div>
+      </header>
+
+      <div className={doubleMode ? "chat-grid double" : "chat-grid single"}>
+        {doubleMode && <div className="panel panel-plain"><div className="panel-title panel-title-plain"><div className="main-title">Standard AI</div><div className="sub-title">Baseline comparison</div></div>{renderPanelPairs("plain")}</div>}
+        <div className={doubleMode ? "panel panel-rk" : "panel panel-rk solo"}>{doubleMode && <div className="panel-title panel-title-rk"><div className="main-title"><span>BRUNEL</span><span className="powered">Powered by ARCHE</span></div><div className="sub-title">Artificial Behavioral Intelligence</div></div>}{doubleMode ? renderPanelPairs("rk") : renderSinglePairs()}</div>
+      </div>
+
+      <div className="panel-input shared-seed-box">
+        {attachedItem && <div className="attachment-chip active"><Paperclip size={14} />{attachedItem.name} · {formatFileSize(attachedItem.size)}<button onClick={() => setAttachedItem(null)}><X size={12} /></button></div>}
+        {fileStatus && <div className="file-status">{fileStatus}</div>}
+        <input ref={fileInputRef} className="hidden-file-input" type="file" onChange={attachFile} />
+        <div className="input-row"><button className="file-btn" onClick={openFilePicker} disabled={sending} title="Attach"><Paperclip size={14} /></button><textarea className="input" placeholder="What are we working on?" value={text} disabled={sending} onChange={(e) => setText(e.target.value)} onKeyDown={onKey} /><button className={`mic-btn ${listening ? "listening" : ""}`} onClick={toggleSpeech} disabled={sending || !speechSupported} title="Voice">{listening ? <MicOff size={14} /> : <Mic size={14} />}</button><button className="send" onClick={send} disabled={sending || (!text.trim() && !attachedItem)} title="Send"><Send size={14} /></button></div>
+      </div>
+
+      <div className="footnote"><span>BRUNEL · An ArchePersona product</span><span className="footnote-tag">Powered by ARCHE</span></div>
+
+      {drawerKind && <><div className="drawer-backdrop" onClick={closeDrawer} /><aside className={`drawer ${drawerKind === "library" ? "library-drawer" : "settings-drawer"} ${drawerClosing ? "closing" : "open"}`}><div className="drawer-title"><span>{drawerKind === "settings" ? "Brunel Controls" : "Cybrary"}</span><button className="drawer-close" onClick={closeDrawer}><X size={18} /></button></div>{drawerKind === "settings" ? <div className="drawer-row"><div className="drawer-section"><span className="drawer-label">Skin</span><select className="model-select" value={skin} onChange={(e) => setSkin(e.target.value)}>{SKINS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div><div className="drawer-section"><span className="drawer-label">Model</span><select className="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>{MODELS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div><div className="drawer-section"><span className="drawer-label">View</span><div className="view-toggle"><button className={viewMode === "single" ? "active" : ""} onClick={() => setViewMode("single")}>Single</button><button className={viewMode === "double" ? "active" : ""} onClick={() => setViewMode("double")}>Dual</button></div></div><button className="reset-btn" onClick={copyThread} disabled={pairs.length === 0}><ClipboardCopy size={13} />{copiedKey === "thread" ? "Copied" : "Copy"}</button><button className="reset-btn" onClick={clearLocalChat}><Trash2 size={13} />Clear</button>{isAdmin && <button className="reset-btn" onClick={() => navigate("/admin")}><Shield size={13} />Admin</button>}<button className="reset-btn" onClick={signOut}><LogOut size={13} />Exit</button></div> : <div className="drawer-row library-list">{cybraryItems.length === 0 ? <p>No Cybrary items yet.</p> : cybraryItems.map((item) => <button key={item.id} className="library-item" onClick={() => { setAttachedItem(item); closeDrawer(); }}><strong>{item.name}</strong><span>{item.kind || item.type} · {formatFileSize(item.size)} · {item.status || "stored"}</span></button>)}</div>}</aside></>}
     </div>
   );
 }
