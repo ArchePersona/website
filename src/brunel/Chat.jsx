@@ -174,7 +174,7 @@ function Chat() {
   );
 
   return (
-    <div className={`app brunel-skin-${skin}`}>
+    <div className="app" data-skin={skin}>
       <header className="topbar brunel-shell-topbar">
         <div className="topbar-left"><button className="drawer-toggle cybrary-toggle" onClick={() => openDrawer("library")} title="Cybrary"><Library size={18} /></button></div>
         <div className="brand brand-centered"><div className="brand-name">BRUNEL</div><div className="brand-sub">The Builder</div></div>
