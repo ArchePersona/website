@@ -19,6 +19,15 @@ export default function VHoldPage() {
         <p className="vh-tagline">Trust-based autonomy for autonomous AI agents.</p>
         <p className="vh-subtagline">Powered by V-HOLD.</p>
 
+        <a
+          className="vh-demo-link"
+          href="https://v-hold-1.onrender.com/dashboard"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open Control Tower Demo
+        </a>
+
         <div className="vh-grid">
           {proofPoints.map(([title, body]) => (
             <article className="vh-point" key={title}>
