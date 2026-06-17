@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
@@ -14,12 +14,21 @@ import Disclaimer from './brunel/Disclaimer.jsx';
 import Admin from './brunel/Admin.jsx';
 import ProtectedRoute from './brunel/ProtectedRoute.jsx';
 
+function ExternalRedirect({ to }) {
+  useEffect(() => {
+    window.location.replace(to);
+  }, [to]);
+
+  return null;
+}
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
           <Route path="/" element={<ArcheHomepage />} />
+          <Route path="/deck" element={<ExternalRedirect to="https://archepersona.github.io/pitch-deck/" />} />
           <Route path="/creations" element={<Navigate to="/brunel/disclaimer" replace />} />
           <Route path="/consequence" element={<VHoldPage />} />
           <Route path="/oversight" element={<Navigate to="/consequence" replace />} />
