@@ -36,6 +36,8 @@ export default function ArcheHomepage() {
           <Link to="/archengine">ARCHEngine</Link>
           <span className="ap-nav-separator" aria-hidden="true">|</span>
           <Link to="/contact">CONTACT</Link>
+          <span className="ap-nav-separator" aria-hidden="true">|</span>
+          <Link to="/deck">INVESTOR DECK</Link>
         </nav>
 
         <footer className="ap-footer">Powered by ARCHEngine</footer>
