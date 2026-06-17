@@ -68,6 +68,16 @@
   text-transform: uppercase;
 }
 
+.vh-subtagline {
+  margin: 0.75rem auto 0;
+  font-family: Inter, sans-serif;
+  font-size: clamp(0.76rem, 1.25vw, 0.95rem);
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  color: rgba(242, 183, 94, 0.86);
+  text-transform: uppercase;
+}
+
 .vh-grid {
   margin: clamp(2rem, 5vw, 3.25rem) auto 0;
   display: grid;
@@ -122,6 +132,7 @@
   }
 
   .vh-tagline,
+  .vh-subtagline,
   .vh-rule {
     margin-left: 0;
     margin-right: 0;
