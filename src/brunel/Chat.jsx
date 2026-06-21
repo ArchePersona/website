@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Send, LogOut, Shield, ClipboardCopy, Mic, MicOff, Paperclip, Trash2, Settings, X, Library } from "lucide-react";
 import { useAuth } from "./AuthContext.jsx";
+import { DEFAULT_MODEL_CHOICE, MODEL_CHOICES, normalizeModelChoice } from "./modelChoices.js";
 import "./App.css";
 import "./skins/skin-tokens.css";
 import "./visible-ui-fix.css";
@@ -18,7 +19,6 @@ const MODE_VISUALS = {
   "011": { label: "Companion", className: "mode-companion" }, "111": { label: "Assistant", className: "mode-assistant" }, "211": { label: "Hearth", className: "mode-hearth" }, "311": { label: "Creative", className: "mode-creative" }, "411": { label: "Research", className: "mode-research" }, "511": { label: "Tutor", className: "mode-tutor" }, "611": { label: "Operations", className: "mode-operations" }, "711": { label: "Technical", className: "mode-technical" }, "811": { label: "Sentinel", className: "mode-sentinel" }, "911": { label: "Emergency", className: "mode-emergency" },
 };
 const SKINS = [["desk","Desk"],["ledger","Ledger"],["phosphor","Phosphor"],["night-study","Night Study"],["fireplace","Fireplace"],["drafting-table","Drafting Table"],["cartographer","Cartographer"],["letterpress","Letterpress"],["tron","Tron"],["jarvis","Jarvis"]];
-const MODELS = [["cheap","Cheap"],["smart","Smart"],["gemini","Gemini"],["deepseek","DeepSeek"],["qwen","Qwen"]];
 const TIME_FORMATTER = new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 const nowIso = () => new Date().toISOString();
 const formatFileSize = (bytes = 0) => bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -26,6 +26,7 @@ const formatAbsoluteTime = (iso) => { if (!iso) return ""; const d = new Date(is
 const formatRelativeTime = (iso) => { if (!iso) return ""; const then = new Date(iso).getTime(); if (Number.isNaN(then)) return ""; const m = Math.floor((Date.now() - then) / 60000); if (m < 1) return "just now"; if (m < 60) return `${m}m ago`; const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`; const d = Math.floor(h / 24); if (d < 30) return `${d}d ago`; const mo = Math.floor(d / 30); if (mo < 12) return `${mo}mo ago`; return `${Math.floor(d / 365)}y ago`; };
 const formatTimeLabel = (iso) => { const a = formatAbsoluteTime(iso); const r = formatRelativeTime(iso); return a ? `${a} · ${r}` : ""; };
 const loadStoredSkin = () => { try { return window.localStorage.getItem("brunel-skin") || "desk"; } catch (_) { return "desk"; } };
+const loadStoredModel = () => { try { return normalizeModelChoice(window.localStorage.getItem("brunel-model")); } catch (_) { return DEFAULT_MODEL_CHOICE; } };
 const loadInitialViewMode = () => { try { return window.matchMedia("(min-width: 901px)").matches ? "double" : "single"; } catch (_) { return "single"; } };
 
 function Chat() {
@@ -46,7 +47,7 @@ function Chat() {
   const [drawerKind, setDrawerKind] = useState(null);
   const [drawerClosing, setDrawerClosing] = useState(false);
   const [skin, setSkin] = useState(loadStoredSkin);
-  const [selectedModel, setSelectedModel] = useState("cheap");
+  const [selectedModel, setSelectedModel] = useState(loadStoredModel);
   const recognitionRef = useRef(null);
   const speechBaseRef = useRef("");
   const fileInputRef = useRef(null);
@@ -57,6 +58,7 @@ function Chat() {
   const authHeader = useMemo(() => (session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}), [session?.access_token]);
 
   useEffect(() => { try { window.localStorage.setItem("brunel-skin", skin); } catch (_) {} }, [skin]);
+  useEffect(() => { try { window.localStorage.setItem("brunel-model", normalizeModelChoice(selectedModel)); } catch (_) {} }, [selectedModel]);
   useEffect(() => () => { if (drawerTimerRef.current) window.clearTimeout(drawerTimerRef.current); }, []);
   useEffect(() => {
     if (!sessionId || !session?.access_token) return;
@@ -125,7 +127,7 @@ function Chat() {
     const outbound = attachment ? `${msg || "Please review the Cybrary item."}\n\n[Cybrary item attached: ${attachment.name} · ${formatFileSize(attachment.size)} · ${attachment.type} · ${attachment.id}]` : msg;
     setSending(true); setText(""); setAttachedItem(null); setMessages((m) => [...m, { id: userId, role: "user", content: msg || "Cybrary item attached", ts: userTs, attachment }]);
     try {
-      const r = await axios.post(`${API}/chat`, { message: outbound, target: requestDouble ? "both" : "rk_only", model: selectedModel, client_ts: userTs, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null, cybrary_item_ids: attachment ? [attachment.id] : [] }, { headers: authHeader, timeout: 45000 });
+      const r = await axios.post(`${API}/chat`, { message: outbound, target: requestDouble ? "both" : "rk_only", model: normalizeModelChoice(selectedModel), client_ts: userTs, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null, cybrary_item_ids: attachment ? [attachment.id] : [] }, { headers: authHeader, timeout: 45000 });
       const d = r.data; const content = d.rk_response || d.plain_response || ""; const assistantTs = d.ts || d.created_at || nowIso();
       setMessages((m) => [...m, { id: assistantId, role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: assistantTs, state: d.current_state_id || "St0", mode: d.current_mode_id || "011" }]);
     } catch (e) {
@@ -195,7 +197,7 @@ function Chat() {
 
       <div className="footnote"><span>BRUNEL · An ArchePersona product</span><span className="footnote-tag">Powered by ARCHE</span></div>
 
-      {drawerKind && <><div className={`drawer-backdrop ${drawerClosing ? "closing" : "open"}`} onClick={closeDrawer} /><aside className={`drawer ${drawerKind === "library" ? "cybrary-drawer" : "works-drawer"} ${drawerClosing ? "closing" : "open"}`}><div className="drawer-title"><span>{drawerKind === "settings" ? "Brunel Controls" : "Cybrary"}</span><button className="drawer-close" onClick={closeDrawer}><X size={18} /></button></div>{drawerKind === "settings" ? <div className="drawer-row"><div className="drawer-section"><span className="drawer-label">Skin</span><select className="model-select" value={skin} onChange={(e) => setSkin(e.target.value)}>{SKINS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div><div className="drawer-section"><span className="drawer-label">Model</span><select className="model-select" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)}>{MODELS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div><div className="drawer-section"><span className="drawer-label">View</span><div className="view-toggle"><button className={viewMode === "single" ? "active" : ""} onClick={() => setViewMode("single")}>Single</button><button className={viewMode === "double" ? "active" : ""} onClick={() => setViewMode("double")}>Dual</button></div></div><button className="reset-btn" onClick={copyThread} disabled={pairs.length === 0}><ClipboardCopy size={13} />{copiedKey === "thread" ? "Copied" : "Copy"}</button><button className="reset-btn" onClick={clearLocalChat}><Trash2 size={13} />Clear</button>{isAdmin && <button className="reset-btn" onClick={() => navigate("/admin")}><Shield size={13} />Admin</button>}<button className="reset-btn" onClick={signOut}><LogOut size={13} />Exit</button></div> : <div className="drawer-row cybrary-list">{cybraryItems.length === 0 ? <p className="drawer-note">No Cybrary items yet.</p> : cybraryItems.map((item) => <button key={item.id} className="cybrary-item" onClick={() => { setAttachedItem(item); closeDrawer(); }}><span>{item.name}</span><small>{item.kind || item.type} · {formatFileSize(item.size)} · {item.status || "stored"}</small></button>)}</div>}</aside></>}
+      {drawerKind && <><div className={`drawer-backdrop ${drawerClosing ? "closing" : "open"}`} onClick={closeDrawer} /><aside className={`drawer ${drawerKind === "library" ? "cybrary-drawer" : "works-drawer"} ${drawerClosing ? "closing" : "open"}`}><div className="drawer-title"><span>{drawerKind === "settings" ? "Brunel Controls" : "Cybrary"}</span><button className="drawer-close" onClick={closeDrawer}><X size={18} /></button></div>{drawerKind === "settings" ? <div className="drawer-row"><div className="drawer-section"><span className="drawer-label">Skin</span><select className="model-select" value={skin} onChange={(e) => setSkin(e.target.value)}>{SKINS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div><div className="drawer-section"><span className="drawer-label">Model</span><select className="model-select" value={selectedModel} onChange={(e) => setSelectedModel(normalizeModelChoice(e.target.value))}>{MODEL_CHOICES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div><div className="drawer-section"><span className="drawer-label">View</span><div className="view-toggle"><button className={viewMode === "single" ? "active" : ""} onClick={() => setViewMode("single")}>Single</button><button className={viewMode === "double" ? "active" : ""} onClick={() => setViewMode("double")}>Dual</button></div></div><button className="reset-btn" onClick={copyThread} disabled={pairs.length === 0}><ClipboardCopy size={13} />{copiedKey === "thread" ? "Copied" : "Copy"}</button><button className="reset-btn" onClick={clearLocalChat}><Trash2 size={13} />Clear</button>{isAdmin && <button className="reset-btn" onClick={() => navigate("/admin")}><Shield size={13} />Admin</button>}<button className="reset-btn" onClick={signOut}><LogOut size={13} />Exit</button></div> : <div className="drawer-row cybrary-list">{cybraryItems.length === 0 ? <p className="drawer-note">No Cybrary items yet.</p> : cybraryItems.map((item) => <button key={item.id} className="cybrary-item" onClick={() => { setAttachedItem(item); closeDrawer(); }}><span>{item.name}</span><small>{item.kind || item.type} · {formatFileSize(item.size)} · {item.status || "stored"}</small></button>)}</div>}</aside></>}
     </div>
   );
 }
