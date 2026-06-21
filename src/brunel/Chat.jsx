@@ -28,6 +28,15 @@ const formatTimeLabel = (iso) => { const a = formatAbsoluteTime(iso); const r = 
 const loadStoredSkin = () => { try { return window.localStorage.getItem("brunel-skin") || "desk"; } catch (_) { return "desk"; } };
 const loadStoredModel = () => { try { return normalizeModelChoice(window.localStorage.getItem("brunel-model")); } catch (_) { return DEFAULT_MODEL_CHOICE; } };
 const loadInitialViewMode = () => { try { return window.matchMedia("(min-width: 901px)").matches ? "double" : "single"; } catch (_) { return "single"; } };
+const stringifyEngineError = (value) => {
+  if (!value) return "unknown";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map(stringifyEngineError).filter(Boolean).join("; ") || "unknown";
+  if (typeof value === "object") {
+    return value.msg || value.message || value.error || value.detail || JSON.stringify(value);
+  }
+  return String(value);
+};
 
 function Chat() {
   const { user, session, signOut } = useAuth();
@@ -131,7 +140,8 @@ function Chat() {
       const d = r.data; const content = d.rk_response || d.plain_response || ""; const assistantTs = d.ts || d.created_at || nowIso();
       setMessages((m) => [...m, { id: assistantId, role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: assistantTs, state: d.current_state_id || "St0", mode: d.current_mode_id || "011" }]);
     } catch (e) {
-      const errMsg = `[ link to engine failed — ${e?.response?.data?.detail || e?.message || "unknown"} ]`;
+      const detail = stringifyEngineError(e?.response?.data?.detail || e?.response?.data || e?.message);
+      const errMsg = `[ link to engine failed — ${detail} ]`;
       setMessages((m) => [...m, { id: assistantId, role: "assistant", content: errMsg, plain: requestDouble ? errMsg : null, ts: nowIso(), state: "St0", mode: "011" }]);
     } finally { setSending(false); }
   };
@@ -141,7 +151,7 @@ function Chat() {
     for (const m of messages) {
       if (m.role === "user") { if (pending) out.push(pending); pending = { user: m.content, userTs: m.ts, userAttachment: m.attachment || null, assistant: null, plain: null, assistantTs: null, assistantState: "St0", assistantMode: "011" }; }
       else if (pending) { pending.assistant = m.content; pending.plain = m.plain || null; pending.assistantTs = m.ts; pending.assistantState = m.state || "St0"; pending.assistantMode = m.mode || "011"; out.push(pending); pending = null; }
-      else out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: m.state || "St0", assistantMode: "011" });
+      else out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: "St0", assistantMode: "011" });
     }
     if (pending) out.push(pending); return out;
   }, [messages]);
