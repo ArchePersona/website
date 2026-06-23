@@ -30,7 +30,7 @@ function App() {
           <Route path="/" element={<ArcheHomepage />} />
           <Route path="/deck" element={<ExternalRedirect to="https://archepersona.github.io/pitch-deck/" />} />
           <Route path="/creations" element={<Navigate to="/brunel/disclaimer" replace />} />
-          <Route path="/consequence" element={<VHoldPage />} />
+          <Route path="/consequence" element={<ExternalRedirect to="https://control-tower-mobile.vercel.app/" />} />
           <Route path="/oversight" element={<Navigate to="/consequence" replace />} />
           <Route path="/archengine" element={<InfoPage page="archengine" />} />
           <Route path="/about" element={<InfoPage page="about" />} />
