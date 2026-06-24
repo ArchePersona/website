@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import brunelHeaderImage from "../images/file_00000000947c720c8056c2feeeac6d4f.png";
 import "./App.css";
 
 const ACK_ITEMS = [
@@ -31,6 +32,15 @@ const styles = {
     margin: "0 auto",
     display: "grid",
     gap: "clamp(15px, 3.4vw, 22px)",
+  },
+  headerImage: {
+    display: "block",
+    width: "min(100%, 760px)",
+    height: "auto",
+    margin: "0 auto clamp(4px, 1.6vw, 10px)",
+    borderRadius: "16px",
+    border: "1px solid rgba(184,148,10,.18)",
+    boxShadow: "0 0 32px rgba(0,0,0,.42)",
   },
   titleBlock: {
     display: "grid",
@@ -157,6 +167,8 @@ export default function Disclaimer() {
     <div className="auth-shell disclaimer-shell" style={styles.shell}>
       <div className="auth-card disclaimer-card" style={styles.card}>
         <div style={styles.content}>
+          <img style={styles.headerImage} src={brunelHeaderImage} alt="Brunel" />
+
           <div style={styles.titleBlock}>
             <h1 className="disclaimer-title" style={styles.title}>Meet Brunel</h1>
             <p style={styles.subtitle}>The Builder</p>
