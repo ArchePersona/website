@@ -48,7 +48,7 @@ const styles = {
     letterSpacing: ".24em",
     textTransform: "uppercase",
     textAlign: "center",
-    margin: "-4px 0 0",
+    margin: "-10px 0 0",
   },
   rule: {
     width: "112px",
@@ -176,9 +176,9 @@ export default function Disclaimer() {
 
             <ul style={styles.bulletList}>
               <li>Helps find the real problem.</li>
-              <li>Turns scattered thoughts into workable next steps.</li>
+              <li>Turns scattered thoughts into next steps.</li>
               <li>Stays calm, direct, and organized.</li>
-              <li>Favors useful outcomes over performance or hype.</li>
+              <li>Focuses on useful outcomes.</li>
             </ul>
           </section>
 
