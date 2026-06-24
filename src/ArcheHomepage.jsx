@@ -26,8 +26,14 @@ export default function ArcheHomepage() {
       </section>
 
       <section className="ap-doctrine" aria-label="ArchePersona doctrine">
-        <p>Without character, there is nothing to love, and without consequence, character becomes fantasy.</p>
-        <p>Without consequence, there is nothing to trust, and without character, consequence becomes machinery.</p>
+        <p>Without character,</p>
+        <p>there is nothing to love.</p>
+        <p>Without consequence,</p>
+        <p>character becomes fantasy.</p>
+        <p>Without consequence,</p>
+        <p>there is nothing to trust.</p>
+        <p>Without character,</p>
+        <p>consequence becomes machinery.</p>
         <p>We build both.</p>
       </section>
 
