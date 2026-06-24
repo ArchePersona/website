@@ -21,7 +21,7 @@
 
 .ap-hero-logo {
   position: absolute;
-  top: 2%;
+  top: 4%;
   left: 52.5%;
   transform: translateX(-50%);
   width: min(52vw, 470px);
@@ -370,7 +370,7 @@
 
 @media (max-width: 760px) {
   .ap-hero-logo {
-    top: 1.5%;
+    top: 3%;
     width: min(68vw, 370px);
   }
 
@@ -381,7 +381,7 @@
 
 @media (max-width: 520px) {
   .ap-hero-logo {
-    top: 1.2%;
+    top: 2.6%;
     width: min(76vw, 290px);
   }
 
