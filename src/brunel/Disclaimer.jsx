@@ -31,48 +31,33 @@ const styles = {
     maxWidth: "900px",
     margin: "0 auto",
     display: "grid",
-    gap: "clamp(15px, 3.4vw, 22px)",
+    gap: "clamp(14px, 3vw, 20px)",
   },
   headerImage: {
     display: "block",
     width: "min(100%, 760px)",
     height: "auto",
-    margin: "0 auto clamp(4px, 1.6vw, 10px)",
+    margin: "0 auto",
     borderRadius: "16px",
     border: "1px solid rgba(184,148,10,.18)",
     boxShadow: "0 0 32px rgba(0,0,0,.42)",
   },
-  titleBlock: {
-    display: "grid",
-    gap: "5px",
-  },
-  title: {
-    fontSize: "clamp(28px, 8.8vw, 56px)",
-    lineHeight: 1.02,
-    letterSpacing: "-.025em",
-    margin: 0,
-  },
-  subtitle: {
+  builder: {
     color: "var(--gold)",
-    fontSize: "clamp(11px, 3vw, 16px)",
-    letterSpacing: ".19em",
+    fontSize: "clamp(12px, 3.4vw, 18px)",
+    letterSpacing: ".24em",
     textTransform: "uppercase",
-    margin: 0,
+    textAlign: "center",
+    margin: "-4px 0 0",
   },
   rule: {
     width: "112px",
     height: "2px",
     background: "linear-gradient(to right, rgba(184,148,10,.95), transparent)",
   },
-  lead: {
-    color: "#c7d0d4",
-    fontSize: "clamp(13px, 3.45vw, 17px)",
-    lineHeight: 1.62,
-    margin: 0,
-  },
   section: {
     display: "grid",
-    gap: "clamp(9px, 2.6vw, 14px)",
+    gap: "clamp(9px, 2.4vw, 13px)",
     paddingTop: "3px",
   },
   sectionTitle: {
@@ -82,19 +67,24 @@ const styles = {
     textTransform: "uppercase",
     margin: 0,
   },
+  lead: {
+    color: "#c7d0d4",
+    fontSize: "clamp(13px, 3.45vw, 17px)",
+    lineHeight: 1.55,
+    margin: 0,
+  },
   body: {
     color: "#b8c2c8",
     fontSize: "clamp(12.5px, 3.25vw, 16px)",
-    lineHeight: 1.62,
+    lineHeight: 1.58,
     margin: 0,
   },
-  principleList: {
-    display: "grid",
-    gap: "6px",
+  bulletList: {
+    margin: 0,
+    paddingLeft: "1.15rem",
     color: "#c7d0d4",
     fontSize: "clamp(13px, 3.35vw, 17px)",
-    lineHeight: 1.48,
-    margin: 0,
+    lineHeight: 1.55,
   },
   infoBox: {
     border: "1px solid rgba(184,148,10,.09)",
@@ -106,7 +96,7 @@ const styles = {
   ackGrid: {
     display: "grid",
     gap: "8px",
-    paddingTop: "clamp(10px, 3vw, 24px)",
+    paddingTop: "clamp(8px, 2.4vw, 18px)",
   },
   ackRow: {
     display: "flex",
@@ -153,13 +143,17 @@ export default function Disclaimer() {
   const [checks, setChecks] = useState(() => ACK_ITEMS.map(() => false));
   const allChecked = checks.every(Boolean);
 
-  const toggle = (i) => setChecks((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
+  const toggle = (i) => {
+    setChecks((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
+  };
 
   const accept = () => {
     if (!allChecked) return;
+
     try {
       localStorage.setItem(ACCEPTED_KEY, new Date().toISOString());
     } catch (_) {}
+
     navigate(next);
   };
 
@@ -169,33 +163,28 @@ export default function Disclaimer() {
         <div style={styles.content}>
           <img style={styles.headerImage} src={brunelHeaderImage} alt="Brunel" />
 
-          <div style={styles.titleBlock}>
-            <h1 className="disclaimer-title" style={styles.title}>Meet Brunel</h1>
-            <p style={styles.subtitle}>The Builder</p>
-          </div>
+          <p style={styles.builder}>The Builder</p>
+
           <div style={styles.rule} />
 
-          <p style={styles.lead}>
-            Brunel is a low-nonsense productivity partner built for clear thinking, practical work, and steady progress.
-          </p>
-          <p style={styles.body}>
-            He is calm, direct, organized, and more interested in useful outcomes than performance, hype, or drama.
-          </p>
-
           <section style={styles.section}>
-            <h2 style={styles.sectionTitle}>A Builder's Mindset</h2>
-            <div style={styles.principleList}>
-              <span>Solve the real problem.</span>
-              <span>Make the next brick visible.</span>
-              <span>Keep moving with care.</span>
-            </div>
-            <p style={styles.body}>
-              Brunel can help you plan, write, organize, troubleshoot, learn, and turn messy thoughts into workable structure.
+            <h2 style={styles.sectionTitle}>What you can expect</h2>
+
+            <p style={styles.lead}>
+              Brunel is built for clear thinking, practical work, and steady progress.
             </p>
+
+            <ul style={styles.bulletList}>
+              <li>Helps find the real problem.</li>
+              <li>Turns scattered thoughts into workable next steps.</li>
+              <li>Stays calm, direct, and organized.</li>
+              <li>Favors useful outcomes over performance or hype.</li>
+            </ul>
           </section>
 
           <section style={styles.infoBox}>
             <h2 style={styles.sectionTitle}>Before We Begin</h2>
+
             <p style={styles.body}>
               Brunel may feel consistent and personal across sessions, but he remains an artificial intelligence system. Responses may occasionally be incorrect or incomplete.
             </p>
@@ -207,15 +196,31 @@ export default function Disclaimer() {
                 style={{ ...styles.ackRow, ...(checks[i] ? styles.ackRowChecked : {}) }}
                 key={item}
               >
-                <input style={styles.ackInput} type="checkbox" checked={checks[i]} onChange={() => toggle(i)} />
+                <input
+                  style={styles.ackInput}
+                  type="checkbox"
+                  checked={checks[i]}
+                  onChange={() => toggle(i)}
+                />
                 <span>{item}</span>
               </label>
             ))}
           </div>
 
-          <div className="auth-info">{checks.filter(Boolean).length} of {ACK_ITEMS.length} acknowledged</div>
+          <div className="auth-info">
+            {checks.filter(Boolean).length} of {ACK_ITEMS.length} acknowledged
+          </div>
+
           <p style={styles.signature}>Build carefully. Build honestly. Build well.</p>
-          <button className="auth-submit" style={styles.submit} disabled={!allChecked} onClick={accept}>Start Building</button>
+
+          <button
+            className="auth-submit"
+            style={styles.submit}
+            disabled={!allChecked}
+            onClick={accept}
+          >
+            Start Building
+          </button>
         </div>
       </div>
     </div>
