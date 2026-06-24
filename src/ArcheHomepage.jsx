@@ -1,6 +1,6 @@
 import './arche-home.css';
 import heroImage from './images/file_000000004274720c9ccd5c5a01ca599a.png';
-import logoImage from './images/file_00000000f5f0720c904985f294fd517d.png';
+import logoImage from './images/ArchePersonaLogo1.png';
 
 const BRUNEL_DISCLAIMER_URL = 'https://www.archepersona.online/brunel/disclaimer';
 const CONTROL_TOWER_URL = 'https://control-tower-mobile.vercel.app/';
