@@ -132,22 +132,27 @@
 }
 
 .ap-doctrine {
-  padding: clamp(1.25rem, 3vw, 2.4rem) 1rem clamp(0.95rem, 2.25vw, 1.8rem);
+  flex: 1;
+  display: grid;
+  align-content: space-evenly;
+  gap: clamp(0.18rem, 0.8vh, 0.55rem);
+  min-height: 0;
+  padding: clamp(1.1rem, 2.6vw, 2rem) 1rem clamp(1.1rem, 2.6vw, 2rem);
   text-align: center;
   background: #040505;
 }
 
 .ap-doctrine p {
-  margin: 0.46rem auto;
+  margin: 0 auto;
   width: min(660px, 88vw);
   font-family: 'EB Garamond', Georgia, serif;
-  font-size: clamp(0.98rem, 2.05vw, 1.38rem);
-  line-height: 1.28;
+  font-size: clamp(1rem, 2.05vw, 1.38rem);
+  line-height: 1.12;
   color: rgba(245, 220, 178, 0.9);
 }
 
 .ap-doctrine p:last-child {
-  margin-top: 0.95rem;
+  margin-top: clamp(0.35rem, 1.2vh, 0.9rem);
 }
 
 .ap-bottom {
@@ -386,6 +391,14 @@
   .ap-hero-logo {
     top: 3%;
     width: min(54vw, 220px);
+  }
+
+  .ap-doctrine {
+    padding-block: clamp(1.1rem, 3.2vh, 2.2rem);
+  }
+
+  .ap-doctrine p {
+    font-size: clamp(1.02rem, 4.15vw, 1.34rem);
   }
 
   .ap-nav {
