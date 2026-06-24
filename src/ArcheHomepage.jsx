@@ -1,7 +1,9 @@
-import { Link } from 'react-router-dom';
 import './arche-home.css';
 import heroImage from './images/file_000000004274720c9ccd5c5a01ca599a.png';
 import logoImage from './images/file_00000000f5f0720c904985f294fd517d.png';
+
+const BRUNEL_DISCLAIMER_URL = 'https://www.archepersona.online/brunel/disclaimer';
+const CONTROL_TOWER_URL = 'https://control-tower-mobile.vercel.app/';
 
 export default function ArcheHomepage() {
   return (
@@ -9,17 +11,17 @@ export default function ArcheHomepage() {
       <section className="ap-hero" aria-label="ArchePersona hero">
         <img className="ap-hero-image" src={heroImage} alt="Chimera and tower at sunset" />
         <img className="ap-hero-logo" src={logoImage} alt="ArchePersona" />
-        <Link className="ap-zone ap-zone-left" to="/brunel/disclaimer" aria-label="Character" />
-        <Link className="ap-zone ap-zone-right" to="/consequence" aria-label="Consequence" />
+        <a className="ap-zone ap-zone-left" href={BRUNEL_DISCLAIMER_URL} aria-label="Character" />
+        <a className="ap-zone ap-zone-right" href={CONTROL_TOWER_URL} aria-label="Consequence" />
       </section>
 
       <section className="ap-statement" aria-label="ArchePersona statement">
         <div className="ap-statement-line">Behavioral infrastructure</div>
         <div className="ap-statement-for">for</div>
         <div className="ap-duality">
-          <Link to="/brunel/disclaimer">CHARACTER</Link>
+          <a href={BRUNEL_DISCLAIMER_URL}>CHARACTER</a>
           <span>&amp;</span>
-          <Link to="/consequence">CONSEQUENCE</Link>
+          <a href={CONTROL_TOWER_URL}>CONSEQUENCE</a>
         </div>
       </section>
 
@@ -31,13 +33,13 @@ export default function ArcheHomepage() {
 
       <div className="ap-bottom">
         <nav className="ap-nav" aria-label="ArchePersona navigation">
-          <Link to="/about">ABOUT</Link>
+          <a href="/about">ABOUT</a>
           <span className="ap-nav-separator" aria-hidden="true">|</span>
-          <Link to="/archengine">ARCHEngine</Link>
+          <a href="/archengine">ARCHEngine</a>
           <span className="ap-nav-separator" aria-hidden="true">|</span>
-          <Link to="/contact">CONTACT</Link>
+          <a href="/contact">CONTACT</a>
           <span className="ap-nav-separator" aria-hidden="true">|</span>
-          <Link to="/deck">INVESTOR DECK</Link>
+          <a href="/deck">INVESTOR DECK</a>
         </nav>
 
         <footer className="ap-footer">Powered by ARCHEngine</footer>
