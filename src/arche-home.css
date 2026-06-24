@@ -21,7 +21,7 @@
 
 .ap-hero-logo {
   position: absolute;
-  top: -3.2%;
+  top: 2%;
   left: 52.5%;
   transform: translateX(-50%);
   width: min(64vw, 575px);
@@ -349,133 +349,51 @@
   color: inherit;
   text-align: center;
   text-decoration: none;
-  border: 1px solid rgba(215, 153, 55, 0.34);
-  border-radius: 14px;
-  background: rgba(19, 17, 14, 0.72);
-}
-
-.ap-product small {
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 1rem;
-  color: rgba(245, 220, 178, 0.72);
+  border: 1px solid rgba(215, 153, 55, 0.28);
+  border-radius: 18px;
+  background: rgba(10, 10, 10, 0.62);
+  box-shadow: inset 0 0 30px rgba(229, 169, 68, 0.025);
 }
 
 .ap-product:hover,
 .ap-product:focus-visible {
-  border-color: rgba(255, 198, 94, 0.78);
-  background: rgba(36, 27, 16, 0.88);
+  border-color: rgba(255, 198, 94, 0.72);
+  background: rgba(29, 20, 12, 0.62);
   outline: none;
 }
 
-.ap-product.future {
-  opacity: 0.48;
-  filter: grayscale(0.5);
-  cursor: default;
+.ap-product small {
+  display: block;
+  font-family: 'EB Garamond', Georgia, serif;
+  color: rgba(245, 220, 178, 0.68);
 }
 
-.ap-product.future:hover {
-  border-color: rgba(215, 153, 55, 0.34);
-  background: rgba(19, 17, 14, 0.72);
-}
-
-@media (max-width: 780px) {
+@media (max-width: 760px) {
   .ap-hero-logo {
-    top: -4.5%;
-    left: 52.5%;
-    width: 64vw;
+    top: 1.5%;
+    width: min(76vw, 420px);
   }
 
-  .ap-statement {
-    padding-top: 0.9rem;
-    padding-bottom: 0.7rem;
+  .ap-product-grid {
+    grid-template-columns: 1fr 1fr;
   }
+}
 
-  .ap-statement-line {
-    font-size: clamp(1.18rem, 4.9vw, 1.95rem);
-  }
-
-  .ap-statement-for {
-    margin-top: 0.22rem;
-    margin-bottom: 0.34rem;
-    width: 58vw;
-    font-size: clamp(0.82rem, 3vw, 1.08rem);
-  }
-
-  .ap-duality {
-    gap: 0.42rem;
-    letter-spacing: 0.035em;
-    font-size: clamp(0.78rem, 3.35vw, 1.55rem);
-  }
-
-  .ap-doctrine {
-    padding-top: 1.35rem;
-    padding-bottom: 1rem;
-  }
-
-  .ap-doctrine p {
-    margin: 0.52rem auto;
-    font-size: clamp(0.92rem, 3.2vw, 1.14rem);
-    line-height: 1.32;
-  }
-
-  .ap-doctrine p:last-child {
-    margin-top: 0.88rem;
+@media (max-width: 520px) {
+  .ap-hero-logo {
+    top: 1.2%;
+    width: min(86vw, 330px);
   }
 
   .ap-nav {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: clamp(0.38rem, 1.7vw, 0.8rem);
-    align-items: center;
-    padding: 0.78rem 0.7rem;
-  }
-
-  .ap-nav a {
-    font-size: clamp(0.54rem, 2.25vw, 0.74rem);
-    letter-spacing: 0.13em;
+    flex-wrap: wrap;
   }
 
   .ap-nav-separator {
-    font-size: 0.68rem;
-  }
-
-  .ap-footer {
-    padding: 0.55rem 1rem 0.82rem;
-    font-size: 0.76rem;
+    display: none;
   }
 
   .ap-product-grid {
     grid-template-columns: 1fr;
-  }
-
-  .ap-zone {
-    width: 50%;
-  }
-
-  .ap-back {
-    position: static;
-    margin: 0 0 1rem;
-    justify-self: start;
-  }
-
-  .ap-panel {
-    padding: 1.5rem;
-  }
-
-  .ap-lead {
-    padding-bottom: 1.4rem;
-  }
-
-  .ap-content-stack {
-    gap: 1.65rem;
-  }
-
-  .ap-content-section h2 {
-    letter-spacing: 0.16em;
-  }
-
-  .ap-contact-link {
-    max-width: 100%;
-    overflow-wrap: anywhere;
   }
 }
