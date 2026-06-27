@@ -343,6 +343,90 @@
   outline: none;
 }
 
+.ap-contact-form {
+  width: min(620px, 100%);
+  margin: 1.4rem auto 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.ap-contact-form label {
+  display: grid;
+  gap: 0.45rem;
+  text-align: left;
+}
+
+.ap-contact-form span {
+  font-family: Audiowide, Inter, sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 229, 178, 0.74);
+}
+
+.ap-contact-form input,
+.ap-contact-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.86rem 1rem;
+  font: 500 1rem Inter, sans-serif;
+  color: #ffe5b2;
+  border: 1px solid rgba(215, 153, 55, 0.34);
+  border-radius: 14px;
+  background: rgba(12, 12, 12, 0.82);
+  box-shadow: inset 0 0 18px rgba(229, 169, 68, 0.025);
+}
+
+.ap-contact-form textarea {
+  resize: vertical;
+  min-height: 150px;
+}
+
+.ap-contact-form input:focus,
+.ap-contact-form textarea:focus {
+  border-color: rgba(255, 198, 94, 0.78);
+  outline: none;
+}
+
+.ap-contact-form button {
+  justify-self: center;
+  margin-top: 0.35rem;
+  padding: 0.78rem 1.25rem;
+  font-family: Audiowide, Inter, sans-serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.18em;
+  color: #ffe5b2;
+  text-transform: uppercase;
+  border: 1px solid rgba(215, 153, 55, 0.48);
+  border-radius: 999px;
+  background: rgba(36, 27, 16, 0.86);
+  cursor: pointer;
+}
+
+.ap-contact-form button:hover,
+.ap-contact-form button:focus-visible {
+  border-color: rgba(255, 198, 94, 0.82);
+  background: rgba(54, 39, 20, 0.92);
+  outline: none;
+}
+
+.ap-contact-form button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.ap-form-status {
+  margin-top: 0.6rem !important;
+  font-size: clamp(1rem, 1.7vw, 1.18rem) !important;
+}
+
+.ap-honeypot {
+  position: absolute;
+  left: -9999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .ap-product-grid {
   margin-top: clamp(2rem, 4vw, 3rem);
   display: grid;
