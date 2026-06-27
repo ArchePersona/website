@@ -34,28 +34,28 @@ const pageContent = {
   },
   archengine: {
     kicker: 'ARCHEngine',
-    title: 'Behavioral Runtime',
+    title: 'Human-Emulative AI',
     lead: 'Adaptive Relational Cognitive Human Emulator.',
     sections: [
       {
-        heading: 'Powered by ARCHEngine',
+        heading: 'Part A — The Vision',
         body: [
-          'ARCHEngine is the behavioral runtime behind everything ArchePersona builds.',
-          'Its purpose is not merely to produce responses. Its purpose is to cultivate behavior.',
+          'Why ARCHE matters before every product built on it.',
+          { text: 'Open Part A', href: 'https://arche-engine-zx5ccum.gamma.site/' },
         ],
       },
       {
-        heading: 'Behavior before output',
+        heading: 'Part B — The Platform',
         body: [
-          'Most systems are designed around intelligence. ARCHEngine is designed around behavior.',
-          'Intelligence determines what is possible. Character determines who is acting. Consequence determines what follows.',
+          'How the ARCHE vision becomes a company, a platform, and a product ecosystem.',
+          { text: 'Open Part B', href: 'https://gamma.app/docs/The-Vision-Becomes-a-Platform-xxlddt3yxd1mwwc' },
         ],
       },
       {
         heading: 'The principle',
         body: [
-          'Trustworthy artificial beings will not arise from intelligence alone.',
-          'They will emerge from the union of character and consequence.',
+          'ARCHE is not a chatbot. Not a wrapper. Not a trust layer branded as a product.',
+          'ARCHE is the engine: the human emulator and infrastructure beneath persistent intelligence.',
         ],
       },
     ],
