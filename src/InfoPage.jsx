@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './arche-home.css';
 
@@ -63,12 +64,8 @@ const pageContent = {
   contact: {
     kicker: 'Contact',
     title: 'Start a Conversation',
-    lead: 'Reach out to ArchePersona for questions, demos, or collaboration.',
+    lead: 'Use the form below for questions, demos, or collaboration.',
     sections: [
-      {
-        heading: 'Email',
-        body: [{ text: 'therollingwrenchnc@gmail.com', href: 'mailto:therollingwrenchnc@gmail.com' }],
-      },
       {
         heading: 'GitHub',
         body: [{ text: 'ArchePersona', href: 'https://github.com/ArchePersona' }],
@@ -87,6 +84,70 @@ function renderContentItem(item) {
   );
 }
 
+function ContactForm() {
+  const [status, setStatus] = useState('idle');
+  const [message, setMessage] = useState('');
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setStatus('sending');
+    setMessage('');
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Message failed');
+      }
+
+      form.reset();
+      setStatus('sent');
+      setMessage('Message sent. Thank you.');
+    } catch (error) {
+      setStatus('error');
+      setMessage('Message could not be sent. Please try again later.');
+    }
+  }
+
+  return (
+    <section className="ap-content-section" aria-label="Contact form">
+      <h2>Message</h2>
+      <form className="ap-contact-form" onSubmit={handleSubmit}>
+        <input type="text" name="company" tabIndex="-1" autoComplete="off" aria-hidden="true" className="ap-honeypot" />
+
+        <label>
+          <span>Name</span>
+          <input name="name" type="text" autoComplete="name" required />
+        </label>
+
+        <label>
+          <span>Email</span>
+          <input name="email" type="email" autoComplete="email" required />
+        </label>
+
+        <label>
+          <span>Message</span>
+          <textarea name="message" rows="5" required />
+        </label>
+
+        <button type="submit" disabled={status === 'sending'}>
+          {status === 'sending' ? 'Sending...' : 'Send Message'}
+        </button>
+
+        {message && <p className="ap-form-status">{message}</p>}
+      </form>
+    </section>
+  );
+}
+
 export default function InfoPage({ page }) {
   const content = pageContent[page] || pageContent.about;
 
@@ -98,6 +159,7 @@ export default function InfoPage({ page }) {
         <h1>{content.title}</h1>
         <p className="ap-lead">{content.lead}</p>
         <div className="ap-content-stack">
+          {page === 'contact' && <ContactForm />}
           {content.sections.map(({ heading, body }) => (
             <section className="ap-content-section" key={heading}>
               <h2>{heading}</h2>
