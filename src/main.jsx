@@ -14,7 +14,7 @@ import Disclaimer from './brunel/Disclaimer.jsx';
 import Admin from './brunel/Admin.jsx';
 import ProtectedRoute from './brunel/ProtectedRoute.jsx';
 
-const INVESTOR_DECK_URL = 'https://archepersona.github.io/pitch-deck/downloads/AI-Agents-Control-Tower-compressed.pdf';
+const INVESTOR_DECK_URL = 'https://control-tower-lru30ht.gamma.site/';
 
 function ExternalRedirect({ to }) {
   useEffect(() => {
