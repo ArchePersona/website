@@ -4,7 +4,6 @@ import logoImage from './images/ArchePersonaLogo1.png';
 
 const BRUNEL_DISCLAIMER_URL = 'https://www.archepersona.online/brunel/disclaimer';
 const CONTROL_TOWER_URL = 'https://control-tower-mobile.vercel.app/';
-const ARCHE_ENGINE_URL = 'https://arche-engine-zx5ccum.gamma.site/';
 
 export default function ArcheHomepage() {
   return (
@@ -42,7 +41,7 @@ export default function ArcheHomepage() {
         <nav className="ap-nav" aria-label="ArchePersona navigation">
           <a href="/about">ABOUT</a>
           <span className="ap-nav-separator" aria-hidden="true">|</span>
-          <a href={ARCHE_ENGINE_URL}>ARCHEngine</a>
+          <a href="/archengine">ARCHEngine</a>
           <span className="ap-nav-separator" aria-hidden="true">|</span>
           <a href="/contact">CONTACT</a>
           <span className="ap-nav-separator" aria-hidden="true">|</span>
