@@ -14,6 +14,8 @@ import Disclaimer from './brunel/Disclaimer.jsx';
 import Admin from './brunel/Admin.jsx';
 import ProtectedRoute from './brunel/ProtectedRoute.jsx';
 
+const INVESTOR_DECK_URL = 'https://archepersona.github.io/pitch-deck/downloads/AI-Agents-Control-Tower-compressed.pdf';
+
 function ExternalRedirect({ to }) {
   useEffect(() => {
     window.location.replace(to);
@@ -28,7 +30,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<ArcheHomepage />} />
-          <Route path="/deck" element={<ExternalRedirect to="https://archepersona.github.io/pitch-deck/" />} />
+          <Route path="/deck" element={<ExternalRedirect to={INVESTOR_DECK_URL} />} />
           <Route path="/creations" element={<Navigate to="/brunel/disclaimer" replace />} />
           <Route path="/consequence" element={<ExternalRedirect to="https://control-tower-mobile.vercel.app/" />} />
           <Route path="/oversight" element={<Navigate to="/consequence" replace />} />
