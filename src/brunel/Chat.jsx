@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Send, LogOut, Shield, ClipboardCopy, Mic, MicOff, Paperclip, Trash2, Settings, X, Library } from "lucide-react";
 import { useAuth } from "./AuthContext.jsx";
-import { DEFAULT_MODEL_CHOICE, MODEL_CHOICES, normalizeModelChoice } from "./modelChoices.js";
+import { DEFAULT_MODEL_CHOICE, ADMIN_MODEL_CHOICES, normalizeModelChoice, modelChoiceLabel } from "./modelChoices.js";
 import "./App.css";
 import "./skins/skin-tokens.css";
 import "./visible-ui-fix.css";
@@ -67,7 +67,7 @@ function Chat() {
   const authHeader = useMemo(() => (session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}), [session?.access_token]);
 
   useEffect(() => { try { window.localStorage.setItem("brunel-skin", skin); } catch (_) {} }, [skin]);
-  useEffect(() => { try { window.localStorage.setItem("brunel-model", normalizeModelChoice(selectedModel)); } catch (_) {} }, [selectedModel]);
+  useEffect(() => { if (!isAdmin) return; try { window.localStorage.setItem("brunel-model", normalizeModelChoice(selectedModel)); } catch (_) {} }, [isAdmin, selectedModel]);
   useEffect(() => () => { if (drawerTimerRef.current) window.clearTimeout(drawerTimerRef.current); }, []);
   useEffect(() => {
     if (!sessionId || !session?.access_token) return;
@@ -79,7 +79,7 @@ function Chat() {
         const d = r.data;
         setMessages((d.rk_history || []).flatMap((t, index) => [
           { id: `hydrated-user-${index}`, role: "user", content: t.user, ts: t.ts || null, attachment: t.attachment || null },
-          { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null, state: t.current_state_id || "St0", mode: t.current_mode_id || "011" },
+          { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null, state: t.current_state_id || "St0", mode: t.current_mode_id || "011", modelLabel: t.model_label || null },
         ]));
       } catch (e) { console.warn("session hydrate failed", e); }
     })();
@@ -132,31 +132,35 @@ function Chat() {
   const send = async () => {
     const msg = text.trim(); if ((!msg && !attachedItem) || sending) return;
     const requestDouble = doubleMode; const userId = `user-${Date.now()}`; const assistantId = `assistant-${Date.now() + 1}`; const userTs = nowIso();
+    const selectedModelKey = isAdmin ? normalizeModelChoice(selectedModel) : null;
+    const selectedModelLabel = isAdmin ? modelChoiceLabel(selectedModelKey) : null;
     const attachment = attachedItem ? { id: attachedItem.id, name: attachedItem.name, size: attachedItem.size, type: attachedItem.type || attachedItem.mime_type, source: "cybrary", status: attachedItem.status } : null;
     const outbound = attachment ? `${msg || "Please review the Cybrary item."}\n\n[Cybrary item attached: ${attachment.name} · ${formatFileSize(attachment.size)} · ${attachment.type} · ${attachment.id}]` : msg;
     setSending(true); setText(""); setAttachedItem(null); setMessages((m) => [...m, { id: userId, role: "user", content: msg || "Cybrary item attached", ts: userTs, attachment }]);
     try {
-      const r = await axios.post(`${API}/chat`, { message: outbound, target: requestDouble ? "both" : "rk_only", model: normalizeModelChoice(selectedModel), client_ts: userTs, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null, cybrary_item_ids: attachment ? [attachment.id] : [] }, { headers: authHeader, timeout: 45000 });
+      const r = await axios.post(`${API}/chat`, { message: outbound, target: requestDouble ? "both" : "rk_only", model: selectedModelKey, client_ts: userTs, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null, cybrary_item_ids: attachment ? [attachment.id] : [] }, { headers: authHeader, timeout: 45000 });
       const d = r.data; const content = d.rk_response || d.plain_response || ""; const assistantTs = d.ts || d.created_at || nowIso();
-      setMessages((m) => [...m, { id: assistantId, role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: assistantTs, state: d.current_state_id || "St0", mode: d.current_mode_id || "011" }]);
+      setMessages((m) => [...m, { id: assistantId, role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: assistantTs, state: d.current_state_id || "St0", mode: d.current_mode_id || "011", modelLabel: selectedModelLabel }]);
     } catch (e) {
       const detail = stringifyEngineError(e?.response?.data?.detail || e?.response?.data || e?.message);
       const errMsg = `[ link to engine failed — ${detail} ]`;
-      setMessages((m) => [...m, { id: assistantId, role: "assistant", content: errMsg, plain: requestDouble ? errMsg : null, ts: nowIso(), state: "St0", mode: "011" }]);
+      setMessages((m) => [...m, { id: assistantId, role: "assistant", content: errMsg, plain: requestDouble ? errMsg : null, ts: nowIso(), state: "St0", mode: "011", modelLabel: selectedModelLabel }]);
     } finally { setSending(false); }
   };
   const onKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } };
   const pairs = useMemo(() => {
     const out = []; let pending = null;
     for (const m of messages) {
-      if (m.role === "user") { if (pending) out.push(pending); pending = { user: m.content, userTs: m.ts, userAttachment: m.attachment || null, assistant: null, plain: null, assistantTs: null, assistantState: "St0", assistantMode: "011" }; }
-      else if (pending) { pending.assistant = m.content; pending.plain = m.plain || null; pending.assistantTs = m.ts; pending.assistantState = m.state || "St0"; pending.assistantMode = m.mode || "011"; out.push(pending); pending = null; }
-      else out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: "St0", assistantMode: "011" });
+      if (m.role === "user") { if (pending) out.push(pending); pending = { user: m.content, userTs: m.ts, userAttachment: m.attachment || null, assistant: null, plain: null, assistantTs: null, assistantState: "St0", assistantMode: "011", assistantModel: null }; }
+      else if (pending) { pending.assistant = m.content; pending.plain = m.plain || null; pending.assistantTs = m.ts; pending.assistantState = m.state || "St0"; pending.assistantMode = m.mode || "011"; pending.assistantModel = m.modelLabel || null; out.push(pending); pending = null; }
+      else out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: "St0", assistantMode: "011", assistantModel: m.modelLabel || null });
     }
     if (pending) out.push(pending); return out;
   }, [messages]);
   const fmtTs = (iso) => formatTimeLabel(iso);
-  const formatThread = () => pairs.map((p) => [p.user && `[${fmtTs(p.userTs)}]\nYou: ${p.user}`, p.userAttachment && `[Cybrary item: ${p.userAttachment.name} · ${formatFileSize(p.userAttachment.size)}]`, p.plain && `[${fmtTs(p.assistantTs)}]\nStandard AI: ${p.plain}`, p.assistant && `[${fmtTs(p.assistantTs)}]\nBRUNEL: ${p.assistant}`].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
+  const modelStamp = (p) => p.assistantModel ? `Model: ${p.assistantModel}` : null;
+  const timestampLine = (p) => [modelStamp(p), fmtTs(p.assistantTs || p.userTs)].filter(Boolean).join(" · ");
+  const formatThread = () => pairs.map((p) => [p.user && `[${fmtTs(p.userTs)}]\nYou: ${p.user}`, p.userAttachment && `[Cybrary item: ${p.userAttachment.name} · ${formatFileSize(p.userAttachment.size)}]`, p.plain && `[${fmtTs(p.assistantTs)}]\n${modelStamp(p) ? `${modelStamp(p)}\n` : ""}Standard AI: ${p.plain}`, p.assistant && `[${fmtTs(p.assistantTs)}]\n${modelStamp(p) ? `${modelStamp(p)}\n` : ""}BRUNEL: ${p.assistant}`].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
   const copyThread = async () => { await navigator.clipboard.writeText(formatThread()); setCopiedKey("thread"); window.setTimeout(() => setCopiedKey(null), 1200); };
 
   const renderPanelPairs = (kind) => (
@@ -166,7 +170,7 @@ function Chat() {
           {p.user && <div className="bubble bubble-user">{p.user}{p.userAttachment && <div className="attachment-chip">{p.userAttachment.name} · {formatFileSize(p.userAttachment.size)}</div>}</div>}
           {kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}
           {kind === "rk" && p.assistant !== null && <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>{p.assistant}</div>}
-          {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
+          {(p.assistantModel || p.assistantTs || p.userTs) && <div className="pair-timestamp">{timestampLine(p)}</div>}
         </div>
       ))}
       {sending && <div className="thinking">considering</div>}
@@ -178,7 +182,7 @@ function Chat() {
         <div key={i} className="pair">
           {p.user && <div className="bubble bubble-user">{p.user}{p.userAttachment && <div className="attachment-chip">{p.userAttachment.name} · {formatFileSize(p.userAttachment.size)}</div>}</div>}
           {p.assistant !== null && <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>{p.assistant}</div>}
-          {(p.assistantTs || p.userTs) && <div className="pair-timestamp">{fmtTs(p.assistantTs || p.userTs)}</div>}
+          {(p.assistantModel || p.assistantTs || p.userTs) && <div className="pair-timestamp">{timestampLine(p)}</div>}
         </div>
       ))}
       {sending && <div className="thinking">considering</div>}
@@ -207,7 +211,7 @@ function Chat() {
 
       <div className="footnote"><span>BRUNEL · An ArchePersona product</span><span className="footnote-tag">Powered by ARCHE</span></div>
 
-      {drawerKind && <><div className={`drawer-backdrop ${drawerClosing ? "closing" : "open"}`} onClick={closeDrawer} /><aside className={`drawer ${drawerKind === "library" ? "cybrary-drawer" : "works-drawer"} ${drawerClosing ? "closing" : "open"}`}><div className="drawer-title"><span>{drawerKind === "settings" ? "Brunel Controls" : "Cybrary"}</span><button className="drawer-close" onClick={closeDrawer}><X size={18} /></button></div>{drawerKind === "settings" ? <div className="drawer-row"><div className="drawer-section"><span className="drawer-label">Skin</span><select className="model-select" value={skin} onChange={(e) => setSkin(e.target.value)}>{SKINS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div><div className="drawer-section"><span className="drawer-label">Model</span><select className="model-select" value={selectedModel} onChange={(e) => setSelectedModel(normalizeModelChoice(e.target.value))}>{MODEL_CHOICES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div><div className="drawer-section"><span className="drawer-label">View</span><div className="view-toggle"><button className={viewMode === "single" ? "active" : ""} onClick={() => setViewMode("single")}>Single</button><button className={viewMode === "double" ? "active" : ""} onClick={() => setViewMode("double")}>Dual</button></div></div><button className="reset-btn" onClick={copyThread} disabled={pairs.length === 0}><ClipboardCopy size={13} />{copiedKey === "thread" ? "Copied" : "Copy"}</button><button className="reset-btn" onClick={clearLocalChat}><Trash2 size={13} />Clear</button>{isAdmin && <button className="reset-btn" onClick={() => navigate("/admin")}><Shield size={13} />Admin</button>}<button className="reset-btn" onClick={signOut}><LogOut size={13} />Exit</button></div> : <div className="drawer-row cybrary-list">{cybraryItems.length === 0 ? <p className="drawer-note">No Cybrary items yet.</p> : cybraryItems.map((item) => <button key={item.id} className="cybrary-item" onClick={() => { setAttachedItem(item); closeDrawer(); }}><span>{item.name}</span><small>{item.kind || item.type} · {formatFileSize(item.size)} · {item.status || "stored"}</small></button>)}</div>}</aside></>}
+      {drawerKind && <><div className={`drawer-backdrop ${drawerClosing ? "closing" : "open"}`} onClick={closeDrawer} /><aside className={`drawer ${drawerKind === "library" ? "cybrary-drawer" : "works-drawer"} ${drawerClosing ? "closing" : "open"}`}><div className="drawer-title"><span>{drawerKind === "settings" ? "Brunel Controls" : "Cybrary"}</span><button className="drawer-close" onClick={closeDrawer}><X size={18} /></button></div>{drawerKind === "settings" ? <div className="drawer-row"><div className="drawer-section"><span className="drawer-label">Skin</span><select className="model-select" value={skin} onChange={(e) => setSkin(e.target.value)}>{SKINS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div>{isAdmin && <div className="drawer-section"><span className="drawer-label">Model</span><select className="model-select" value={selectedModel} onChange={(e) => setSelectedModel(normalizeModelChoice(e.target.value))}>{ADMIN_MODEL_CHOICES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div>}<div className="drawer-section"><span className="drawer-label">View</span><div className="view-toggle"><button className={viewMode === "single" ? "active" : ""} onClick={() => setViewMode("single")}>Single</button><button className={viewMode === "double" ? "active" : ""} onClick={() => setViewMode("double")}>Dual</button></div></div><button className="reset-btn" onClick={copyThread} disabled={pairs.length === 0}><ClipboardCopy size={13} />{copiedKey === "thread" ? "Copied" : "Copy"}</button><button className="reset-btn" onClick={clearLocalChat}><Trash2 size={13} />Clear</button>{isAdmin && <button className="reset-btn" onClick={() => navigate("/brunel/admin")}><Shield size={13} />Admin</button>}<button className="reset-btn" onClick={signOut}><LogOut size={13} />Exit</button></div> : <div className="drawer-row cybrary-list">{cybraryItems.length === 0 ? <p className="drawer-note">No Cybrary items yet.</p> : cybraryItems.map((item) => <button key={item.id} className="cybrary-item" onClick={() => { setAttachedItem(item); closeDrawer(); }}><span>{item.name}</span><small>{item.kind || item.type} · {formatFileSize(item.size)} · {item.status || "stored"}</small></button>)}</div>}</aside></>}
     </div>
   );
 }
