@@ -30,19 +30,40 @@ const FLAG_LABELS = [
   ['mediator_prompt_path', 'Mediator posture'],
 ];
 
+const INSPECTION_CARD_DEFAULTS = {
+  system: true,
+  memoryBody: false,
+  activeSeed: false,
+  persona: false,
+  memory: false,
+  recall: false,
+  broker: false,
+  promptBuilder: false,
+  promptWindow: false,
+  promptSections: false,
+  session: false,
+  runtime: false,
+};
+
 const CSS = `
 .engine-admin { min-height: 100dvh; overflow-y: auto; padding: 14px; background: #05080b; color: #e8fff0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 .engine-admin-topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 1px solid rgba(80,255,150,0.22); padding-bottom: 12px; margin-bottom: 12px; }
 .engine-brand-name { color: #d7b35a; font-size: 20px; letter-spacing: 0.22em; }
 .engine-brand-sub { color: #7dffae; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; margin-top: 4px; }
 .engine-admin-actions, .engine-button-row, .engine-card-actions, .value-grid, .egress-stack { display: flex; flex-wrap: wrap; gap: 7px; }
-.engine-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px; }
+.engine-grid, .engine-controls-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px; }
+.engine-controls-grid { margin-bottom: 12px; }
+.engine-section-label { color: rgba(232,255,240,0.56); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; margin: 12px 0 8px; }
 .engine-card { grid-column: span 6; border: 1px solid rgba(80,255,150,0.18); background: rgba(8,14,20,0.92); min-width: 0; }
 .engine-card-wide { grid-column: span 12; }
 .engine-card-head { display: flex; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid rgba(80,255,150,0.12); background: rgba(80,255,150,0.035); }
+.engine-card-head[data-collapsible='true'] { cursor: pointer; }
+.engine-card-title-row { display: flex; align-items: center; gap: 8px; }
+.engine-card-caret { color: #d7b35a; font-size: 10px; min-width: 12px; }
 .engine-card-title { color: #7dffae; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; }
 .engine-card-subtitle { color: rgba(232,255,240,0.58); font-size: 9px; margin-top: 3px; }
 .engine-card-body { padding: 12px; }
+.engine-card-collapsed { display: none; }
 .engine-btn, .engine-mini-btn { background: transparent; border: 1px solid rgba(80,255,150,0.24); color: #7dffae; font: inherit; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; padding: 8px 10px; cursor: pointer; }
 .engine-mini-btn { padding: 5px 8px; font-size: 8px; }
 .engine-btn-primary { border-color: #d7b35a; color: #d7b35a; }
@@ -73,9 +94,21 @@ function bytes(value) {
   const idx = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
   return `${(n / Math.pow(1024, idx)).toFixed(idx ? 1 : 0)} ${units[idx]}`;
 }
-function Card({ title, subtitle, children, wide = false, copyValue, onCopy }) {
-  const actions = copyValue === undefined ? null : <div className="engine-card-actions"><button className="engine-mini-btn" onClick={() => onCopy(title, copyValue)}>Copy</button></div>;
-  return <section className={`engine-card${wide ? ' engine-card-wide' : ''}`}><div className="engine-card-head"><div><div className="engine-card-title">{title}</div>{subtitle && <div className="engine-card-subtitle">{subtitle}</div>}</div>{actions}</div><div className="engine-card-body">{children}</div></section>;
+function Card({ title, subtitle, children, wide = false, copyValue, onCopy, collapsible = true, open = true, onToggle }) {
+  const actions = copyValue === undefined ? null : <button className="engine-mini-btn" onClick={(event) => { event.stopPropagation(); onCopy(title, copyValue); }}>Copy</button>;
+  const toggle = collapsible ? <button className="engine-mini-btn" onClick={(event) => { event.stopPropagation(); onToggle?.(); }}>{open ? 'Collapse' : 'Expand'}</button> : null;
+  return (
+    <section className={`engine-card${wide ? ' engine-card-wide' : ''}`}>
+      <div className="engine-card-head" data-collapsible={collapsible ? 'true' : 'false'} onClick={collapsible ? onToggle : undefined}>
+        <div>
+          <div className="engine-card-title-row"><span className="engine-card-caret">{collapsible ? (open ? '▾' : '▸') : ''}</span><div className="engine-card-title">{title}</div></div>
+          {subtitle && <div className="engine-card-subtitle">{subtitle}</div>}
+        </div>
+        <div className="engine-card-actions">{toggle}{actions}</div>
+      </div>
+      <div className={`engine-card-body${collapsible && !open ? ' engine-card-collapsed' : ''}`}>{children}</div>
+    </section>
+  );
 }
 function Chip({ label, value }) { return <span className="value-chip">{label}<strong>{String(value ?? '—')}</strong></span>; }
 function JsonPanel({ value, maxHeight = 340 }) { return <pre className="engine-json" style={{ maxHeight }}>{safeJson(value)}</pre>; }
@@ -97,6 +130,7 @@ export default function Admin() {
   const [pickState, setPickState] = useState('');
   const [pickMode, setPickMode] = useState('');
   const [runtimeFlags, setRuntimeFlags] = useState(DEFAULT_RUNTIME_FLAGS);
+  const [openCards, setOpenCards] = useState(INSPECTION_CARD_DEFAULTS);
 
   const runtime = runtimeLast?.runtime || {};
   const statePacket = runtime.state || {};
@@ -144,6 +178,8 @@ export default function Admin() {
 
   const setFlag = (key, value) => setRuntimeFlags((prev) => ({ ...normalizeFlags(prev), [key]: value }));
   const copyCard = async (title, value) => { await navigator.clipboard.writeText(safeJson(value)); setMsg(`${title.toLowerCase()} copied`); };
+  const toggleCard = (key) => setOpenCards((prev) => ({ ...prev, [key]: !prev[key] }));
+  const setAllCards = (open) => setOpenCards(Object.fromEntries(Object.keys(INSPECTION_CARD_DEFAULTS).map((key) => [key, open])));
 
   const load = useCallback(async () => {
     if (!session?.access_token || !user?.id) return;
@@ -204,43 +240,49 @@ export default function Admin() {
       <style>{CSS}</style>
       <header className="engine-admin-topbar">
         <div><div className="engine-brand-name">BRUNEL</div><div className="engine-brand-sub">admin · engine console</div></div>
-        <div className="engine-admin-actions"><button className="engine-btn" onClick={load} disabled={busy}>Refresh</button><button className="engine-btn" onClick={copySnapshot}>Copy Snapshot</button><button className="engine-btn" onClick={() => navigate('/brunel')}>Back to BRUNEL</button><button className="engine-btn engine-btn-dim" onClick={() => window.confirm('Sign out of BRUNEL?') && signOut()}>Sign out</button></div>
+        <div className="engine-admin-actions"><button className="engine-btn" onClick={load} disabled={busy}>Refresh</button><button className="engine-btn" onClick={copySnapshot}>Copy Snapshot</button><button className="engine-btn" onClick={() => setAllCards(true)}>Expand All</button><button className="engine-btn" onClick={() => setAllCards(false)}>Collapse All</button><button className="engine-btn" onClick={() => navigate('/brunel')}>Back to BRUNEL</button><button className="engine-btn engine-btn-dim" onClick={() => window.confirm('Sign out of BRUNEL?') && signOut()}>Sign out</button></div>
       </header>
       {msg && <div className="engine-message">{msg}</div>}
-      <main className="engine-grid">
-        <Card title="System Values" subtitle="Fast read of the live engine state." wide copyValue={systemValues} onCopy={copyCard}>
-          <div className="value-grid"><Chip label="turns" value={systemValues.turn_count} /><Chip label="persona" value={systemValues.persona} /><Chip label="state" value={systemValues.state} /><Chip label="mode" value={systemValues.mode} /><Chip label="zone" value={systemValues.zone} /><Chip label="broker" value={systemValues.broker_volume} /><Chip label="history cap" value={systemValues.prompt_history_turns} /><Chip label="runtime keys" value={systemValues.runtime_keys.length} /><Chip label="local memory" value={systemValues.local_memory_writable ? 'writable' : 'check'} /><Chip label="persona packet" value={systemValues.persona_packet_live_path ? 'live' : 'quiet'} /><Chip label="recall" value={systemValues.recall_live_path ? 'live' : 'quiet'} /><Chip label="recall items" value={systemValues.recall_items} /></div>
-          <div className="egress-stack">{egressStack.map(([label, active]) => <span key={label} className="egress-chip" data-active={active ? 'true' : 'false'}>{label}</span>)}</div>
-        </Card>
-        <Card title="Local Memory Body" subtitle="Persistent Render disk status for BRUNEL chronological memory." wide copyValue={memoryStatus} onCopy={copyCard}>
-          <div className="value-grid"><Chip label="ok" value={memoryStatus?.ok ? 'yes' : 'no'} /><Chip label="env" value={memoryStatus?.env_present ? 'set' : 'missing'} /><Chip label="exists" value={memoryStatus?.exists ? 'yes' : 'no'} /><Chip label="writable" value={memoryStatus?.writable ? 'yes' : 'no'} /><Chip label="memory dir" value={memoryStatus?.memory_dir || '—'} /><Chip label="free" value={bytes(memoryStatus?.disk?.free_bytes)} /><Chip label="used" value={bytes(memoryStatus?.disk?.used_bytes)} /><Chip label="recent files" value={(memoryStatus?.recent_files || []).length} /></div>
-          <JsonPanel value={memoryStatus} maxHeight={280} />
-        </Card>
-        <Card title="Runtime Controls" subtitle="Admin override board." copyValue={runtimeControls} onCopy={copyCard}>
+
+      <div className="engine-section-label">Controls</div>
+      <section className="engine-controls-grid">
+        <Card title="Runtime Controls" subtitle="Admin override board." copyValue={runtimeControls} onCopy={copyCard} collapsible={false}>
           <div className="engine-control-row"><label><span>Packet Broker Volume</span><input type="range" min="0" max="100" value={packetVolume} onChange={(e) => setPacketVolume(e.target.value)} /><strong>{packetVolume}</strong></label></div>
           <div className="engine-two-col"><label className="engine-field"><span>Forced State</span><input value={pickState} onChange={(e) => setPickState(e.target.value)} placeholder="natural" /></label><label className="engine-field"><span>Forced Mode</span><input value={pickMode} onChange={(e) => setPickMode(e.target.value)} placeholder="natural" /></label></div>
           <div className="engine-button-row"><button className="engine-btn engine-btn-primary" onClick={applyRuntime} disabled={busy}>{busy ? 'Applying...' : 'Apply Controls'}</button><button className="engine-btn" onClick={clearOverrides} disabled={busy}>Clear State / Mode</button></div>
         </Card>
-        <Card title="Runtime Flags" subtitle="Prompt influence switches." copyValue={runtimeFlags} onCopy={copyCard}>
+        <Card title="Runtime Flags" subtitle="Prompt influence switches." copyValue={runtimeFlags} onCopy={copyCard} collapsible={false}>
           <div className="engine-control-row"><label><span>Prompt History Turns</span><input type="range" min="0" max="80" value={runtimeFlags.prompt_history_turns ?? 0} onChange={(e) => setFlag('prompt_history_turns', Number(e.target.value))} /><strong>{runtimeFlags.prompt_history_turns ?? 0}</strong></label></div>
           <div className="engine-toggle-grid">{FLAG_LABELS.map(([key, label]) => <button key={key} type="button" className="engine-toggle" data-active={runtimeFlags[key] ? 'true' : 'false'} onClick={() => setFlag(key, !runtimeFlags[key])}>{runtimeFlags[key] ? 'ON' : 'OFF'} · {label}</button>)}</div>
         </Card>
-        <Card title="Active Seed" subtitle="Current response seed summary." wide copyValue={activeSeed} onCopy={copyCard}><JsonPanel value={activeSeed} maxHeight={260} /></Card>
-        <Card title="Persona Packet" subtitle="Explicit BRUNEL identity, active profile, and silent behavior rules." wide copyValue={personaPacket} onCopy={copyCard}>
+      </section>
+
+      <div className="engine-section-label">Inspection cards</div>
+      <main className="engine-grid">
+        <Card title="System Values" subtitle="Fast read of the live engine state." wide copyValue={systemValues} onCopy={copyCard} open={openCards.system} onToggle={() => toggleCard('system')}>
+          <div className="value-grid"><Chip label="turns" value={systemValues.turn_count} /><Chip label="persona" value={systemValues.persona} /><Chip label="state" value={systemValues.state} /><Chip label="mode" value={systemValues.mode} /><Chip label="zone" value={systemValues.zone} /><Chip label="broker" value={systemValues.broker_volume} /><Chip label="history cap" value={systemValues.prompt_history_turns} /><Chip label="runtime keys" value={systemValues.runtime_keys.length} /><Chip label="local memory" value={systemValues.local_memory_writable ? 'writable' : 'check'} /><Chip label="persona packet" value={systemValues.persona_packet_live_path ? 'live' : 'quiet'} /><Chip label="recall" value={systemValues.recall_live_path ? 'live' : 'quiet'} /><Chip label="recall items" value={systemValues.recall_items} /></div>
+          <div className="egress-stack">{egressStack.map(([label, active]) => <span key={label} className="egress-chip" data-active={active ? 'true' : 'false'}>{label}</span>)}</div>
+        </Card>
+        <Card title="Local Memory Body" subtitle="Persistent Render disk status for BRUNEL chronological memory." wide copyValue={memoryStatus} onCopy={copyCard} open={openCards.memoryBody} onToggle={() => toggleCard('memoryBody')}>
+          <div className="value-grid"><Chip label="ok" value={memoryStatus?.ok ? 'yes' : 'no'} /><Chip label="env" value={memoryStatus?.env_present ? 'set' : 'missing'} /><Chip label="exists" value={memoryStatus?.exists ? 'yes' : 'no'} /><Chip label="writable" value={memoryStatus?.writable ? 'yes' : 'no'} /><Chip label="memory dir" value={memoryStatus?.memory_dir || '—'} /><Chip label="free" value={bytes(memoryStatus?.disk?.free_bytes)} /><Chip label="used" value={bytes(memoryStatus?.disk?.used_bytes)} /><Chip label="recent files" value={(memoryStatus?.recent_files || []).length} /></div>
+          <JsonPanel value={memoryStatus} maxHeight={280} />
+        </Card>
+        <Card title="Active Seed" subtitle="Current response seed summary." wide copyValue={activeSeed} onCopy={copyCard} open={openCards.activeSeed} onToggle={() => toggleCard('activeSeed')}><JsonPanel value={activeSeed} maxHeight={260} /></Card>
+        <Card title="Persona Packet" subtitle="Explicit BRUNEL identity, active profile, and silent behavior rules." wide copyValue={personaPacket} onCopy={copyCard} open={openCards.persona} onToggle={() => toggleCard('persona')}>
           <div className="value-grid"><Chip label="engaged" value={personaPacket?.engaged ? 'yes' : 'no'} /><Chip label="persona" value={personaPacket?.persona_id || 'BRUNEL'} /><Chip label="state" value={personaPacket?.active_profile?.state || '—'} /><Chip label="mode" value={personaPacket?.active_profile?.mode || '—'} /><Chip label="prompt" value={personaPacket?.persona_packet_prompt_included ? 'included' : 'quiet'} /></div>
           <JsonPanel value={personaPacket} maxHeight={360} />
         </Card>
-        <Card title="Memory / Context" subtitle="Working memory and prompt memory packet." copyValue={memoryPacket} onCopy={copyCard}><JsonPanel value={memoryPacket} maxHeight={320} /></Card>
-        <Card title="Chronological Recall" subtitle="Selective native memory recall packet from the local chronological body." copyValue={recallPacket} onCopy={copyCard}>
+        <Card title="Memory / Context" subtitle="Working memory and prompt memory packet." copyValue={memoryPacket} onCopy={copyCard} open={openCards.memory} onToggle={() => toggleCard('memory')}><JsonPanel value={memoryPacket} maxHeight={320} /></Card>
+        <Card title="Chronological Recall" subtitle="Selective native memory recall packet from the local chronological body." copyValue={recallPacket} onCopy={copyCard} open={openCards.recall} onToggle={() => toggleCard('recall')}>
           <div className="value-grid"><Chip label="triggered" value={recallPacket?.triggered ? 'yes' : 'no'} /><Chip label="items" value={(recallPacket?.items || []).length} /><Chip label="source" value={recallPacket?.metadata?.source || '—'} /><Chip label="stuffing" value={recallPacket?.metadata?.context_stuffing === false ? 'no' : 'check'} /></div>
           <JsonPanel value={recallPacket} maxHeight={320} />
         </Card>
-        <Card title="Packet Broker" subtitle="Last packet broker packet." copyValue={brokerPacket} onCopy={copyCard}><JsonPanel value={brokerPacket} maxHeight={260} /></Card>
-        <Card title="Prompt Builder" subtitle="Prompt packet metadata." copyValue={promptPacket} onCopy={copyCard}><JsonPanel value={promptPacket} maxHeight={260} /></Card>
-        <Card title="Prompt Window" subtitle="Captured system prompt leaving Core." wide copyValue={promptWindow} onCopy={copyCard}><JsonPanel value={promptWindow} maxHeight={420} /></Card>
-        <Card title="Prompt Sections" subtitle="PROMPT WINDOW sections extracted for inspection." wide copyValue={promptSections} onCopy={copyCard}><JsonPanel value={promptSections} maxHeight={420} /></Card>
-        <Card title="Session" subtitle="Current saved BRUNEL session document." wide copyValue={sessionDoc} onCopy={copyCard}><JsonPanel value={sessionDoc} maxHeight={420} /></Card>
-        <Card title="Full Runtime Packet" subtitle="Everything captured from the engine for the last turn." wide copyValue={runtime} onCopy={copyCard}><JsonPanel value={runtime} maxHeight={520} /></Card>
+        <Card title="Packet Broker" subtitle="Last packet broker packet." copyValue={brokerPacket} onCopy={copyCard} open={openCards.broker} onToggle={() => toggleCard('broker')}><JsonPanel value={brokerPacket} maxHeight={260} /></Card>
+        <Card title="Prompt Builder" subtitle="Prompt packet metadata." copyValue={promptPacket} onCopy={copyCard} open={openCards.promptBuilder} onToggle={() => toggleCard('promptBuilder')}><JsonPanel value={promptPacket} maxHeight={260} /></Card>
+        <Card title="Prompt Window" subtitle="Captured system prompt leaving Core." wide copyValue={promptWindow} onCopy={copyCard} open={openCards.promptWindow} onToggle={() => toggleCard('promptWindow')}><JsonPanel value={promptWindow} maxHeight={420} /></Card>
+        <Card title="Prompt Sections" subtitle="PROMPT WINDOW sections extracted for inspection." wide copyValue={promptSections} onCopy={copyCard} open={openCards.promptSections} onToggle={() => toggleCard('promptSections')}><JsonPanel value={promptSections} maxHeight={420} /></Card>
+        <Card title="Session" subtitle="Current saved BRUNEL session document." wide copyValue={sessionDoc} onCopy={copyCard} open={openCards.session} onToggle={() => toggleCard('session')}><JsonPanel value={sessionDoc} maxHeight={420} /></Card>
+        <Card title="Full Runtime Packet" subtitle="Everything captured from the engine for the last turn." wide copyValue={runtime} onCopy={copyCard} open={openCards.runtime} onToggle={() => toggleCard('runtime')}><JsonPanel value={runtime} maxHeight={520} /></Card>
       </main>
     </div>
   );
