@@ -97,6 +97,7 @@ export default function Admin() {
   const runtime = runtimeLast?.runtime || {};
   const statePacket = runtime.state || {};
   const memoryPacket = runtime.memory || {};
+  const recallPacket = memoryPacket.chronological_recall || sessionDoc?.last_chronological_recall || {};
   const brokerPacket = runtime.packet_broker || {};
   const promptPacket = runtime.prompt || {};
   const promptWindow = runtime.prompt_window || {};
@@ -111,6 +112,8 @@ export default function Admin() {
     prompt_history_turns: runtimeFlags.prompt_history_turns,
     runtime_keys: runtimeLast?.runtime_keys || [],
     local_memory_writable: Boolean(memoryStatus?.writable),
+    recall_live_path: Boolean(memoryPacket.chronological_recall_live_path),
+    recall_items: (recallPacket?.items || []).length,
   };
   const activeSeed = {
     persona: promptWindow.persona || 'BRUNEL',
@@ -129,7 +132,7 @@ export default function Admin() {
   const runtimeControls = { packet_volume: packetVolume, forced_state: pickState || null, forced_mode: pickMode || null };
   const fullSnapshot = { captured_at: new Date().toISOString(), engine_config: engineConfig, memory_status: memoryStatus, runtime_last: runtimeLast, session: sessionDoc, runtime };
   const egressStack = [
-    ['runtime', Boolean(runtimeLast?.ok)], ['state', Boolean(runtime.state)], ['broker', Boolean(runtime.packet_broker)], ['memory', Boolean(runtime.memory)], ['local disk', Boolean(memoryStatus?.writable)], ['prompt window', Boolean(runtime.prompt_window)], ['history', Boolean(history.length)],
+    ['runtime', Boolean(runtimeLast?.ok)], ['state', Boolean(runtime.state)], ['broker', Boolean(runtime.packet_broker)], ['memory', Boolean(runtime.memory)], ['recall', Boolean(recallPacket?.metadata || (recallPacket?.items || []).length)], ['local disk', Boolean(memoryStatus?.writable)], ['prompt window', Boolean(runtime.prompt_window)], ['history', Boolean(history.length)],
   ];
 
   const setFlag = (key, value) => setRuntimeFlags((prev) => ({ ...normalizeFlags(prev), [key]: value }));
@@ -199,7 +202,7 @@ export default function Admin() {
       {msg && <div className="engine-message">{msg}</div>}
       <main className="engine-grid">
         <Card title="System Values" subtitle="Fast read of the live engine state." wide copyValue={systemValues} onCopy={copyCard}>
-          <div className="value-grid"><Chip label="turns" value={systemValues.turn_count} /><Chip label="state" value={systemValues.state} /><Chip label="mode" value={systemValues.mode} /><Chip label="zone" value={systemValues.zone} /><Chip label="broker" value={systemValues.broker_volume} /><Chip label="history cap" value={systemValues.prompt_history_turns} /><Chip label="runtime keys" value={systemValues.runtime_keys.length} /><Chip label="local memory" value={systemValues.local_memory_writable ? 'writable' : 'check'} /></div>
+          <div className="value-grid"><Chip label="turns" value={systemValues.turn_count} /><Chip label="state" value={systemValues.state} /><Chip label="mode" value={systemValues.mode} /><Chip label="zone" value={systemValues.zone} /><Chip label="broker" value={systemValues.broker_volume} /><Chip label="history cap" value={systemValues.prompt_history_turns} /><Chip label="runtime keys" value={systemValues.runtime_keys.length} /><Chip label="local memory" value={systemValues.local_memory_writable ? 'writable' : 'check'} /><Chip label="recall" value={systemValues.recall_live_path ? 'live' : 'quiet'} /><Chip label="recall items" value={systemValues.recall_items} /></div>
           <div className="egress-stack">{egressStack.map(([label, active]) => <span key={label} className="egress-chip" data-active={active ? 'true' : 'false'}>{label}</span>)}</div>
         </Card>
         <Card title="Local Memory Body" subtitle="Persistent Render disk status for BRUNEL chronological memory." wide copyValue={memoryStatus} onCopy={copyCard}>
@@ -217,6 +220,10 @@ export default function Admin() {
         </Card>
         <Card title="Active Seed" subtitle="Current response seed summary." wide copyValue={activeSeed} onCopy={copyCard}><JsonPanel value={activeSeed} maxHeight={260} /></Card>
         <Card title="Memory / Context" subtitle="Working memory and prompt memory packet." copyValue={memoryPacket} onCopy={copyCard}><JsonPanel value={memoryPacket} maxHeight={320} /></Card>
+        <Card title="Chronological Recall" subtitle="Selective native memory recall packet from the local chronological body." copyValue={recallPacket} onCopy={copyCard}>
+          <div className="value-grid"><Chip label="triggered" value={recallPacket?.triggered ? 'yes' : 'no'} /><Chip label="items" value={(recallPacket?.items || []).length} /><Chip label="source" value={recallPacket?.metadata?.source || '—'} /><Chip label="stuffing" value={recallPacket?.metadata?.context_stuffing === false ? 'no' : 'check'} /></div>
+          <JsonPanel value={recallPacket} maxHeight={320} />
+        </Card>
         <Card title="Packet Broker" subtitle="Last packet broker packet." copyValue={brokerPacket} onCopy={copyCard}><JsonPanel value={brokerPacket} maxHeight={260} /></Card>
         <Card title="Prompt Builder" subtitle="Prompt packet metadata." copyValue={promptPacket} onCopy={copyCard}><JsonPanel value={promptPacket} maxHeight={260} /></Card>
         <Card title="Prompt Window" subtitle="Captured system prompt leaving Core." wide copyValue={promptWindow} onCopy={copyCard}><JsonPanel value={promptWindow} maxHeight={420} /></Card>
