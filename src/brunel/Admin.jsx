@@ -31,7 +31,7 @@ const CSS = `
 .engine-admin-topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 1px solid rgba(80,255,150,0.22); padding-bottom: 12px; margin-bottom: 12px; }
 .engine-brand-name { color: #d7b35a; font-size: 20px; letter-spacing: 0.22em; }
 .engine-brand-sub { color: #7dffae; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; margin-top: 4px; }
-.engine-admin-actions, .engine-button-row, .value-grid, .egress-stack { display: flex; flex-wrap: wrap; gap: 7px; }
+.engine-admin-actions, .engine-button-row, .engine-card-actions, .value-grid, .egress-stack { display: flex; flex-wrap: wrap; gap: 7px; }
 .engine-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px; }
 .engine-card { grid-column: span 6; border: 1px solid rgba(80,255,150,0.18); background: rgba(8,14,20,0.92); min-width: 0; }
 .engine-card-wide { grid-column: span 12; }
@@ -69,7 +69,8 @@ function bytes(value) {
   const idx = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
   return `${(n / Math.pow(1024, idx)).toFixed(idx ? 1 : 0)} ${units[idx]}`;
 }
-function Card({ title, subtitle, children, wide = false, actions = null }) {
+function Card({ title, subtitle, children, wide = false, copyValue, onCopy }) {
+  const actions = copyValue === undefined ? null : <div className="engine-card-actions"><button className="engine-mini-btn" onClick={() => onCopy(title, copyValue)}>Copy</button></div>;
   return <section className={`engine-card${wide ? ' engine-card-wide' : ''}`}><div className="engine-card-head"><div><div className="engine-card-title">{title}</div>{subtitle && <div className="engine-card-subtitle">{subtitle}</div>}</div>{actions}</div><div className="engine-card-body">{children}</div></section>;
 }
 function Chip({ label, value }) { return <span className="value-chip">{label}<strong>{String(value ?? '—')}</strong></span>; }
@@ -97,14 +98,42 @@ export default function Admin() {
   const statePacket = runtime.state || {};
   const memoryPacket = runtime.memory || {};
   const brokerPacket = runtime.packet_broker || {};
+  const promptPacket = runtime.prompt || {};
   const promptWindow = runtime.prompt_window || {};
+  const promptSections = promptWindow.prompt_sections || {};
   const history = sessionDoc?.rk_history || [];
+  const systemValues = {
+    turn_count: runtimeLast?.turn_count ?? 0,
+    state: statePacket.state,
+    mode: statePacket.mode,
+    zone: statePacket.zone,
+    broker_volume: brokerPacket.volume ?? engineConfig?.packet_broker?.volume ?? 0,
+    prompt_history_turns: runtimeFlags.prompt_history_turns,
+    runtime_keys: runtimeLast?.runtime_keys || [],
+    local_memory_writable: Boolean(memoryStatus?.writable),
+  };
+  const activeSeed = {
+    persona: promptWindow.persona || 'BRUNEL',
+    user_message: promptWindow.user_message || null,
+    state: statePacket.state || null,
+    mode: statePacket.mode || null,
+    zone: statePacket.zone || null,
+    directive: statePacket.directive || null,
+    previous_state: statePacket.previous_state || null,
+    previous_mode: statePacket.previous_mode || null,
+    flags: statePacket.flags || [],
+    signals: statePacket.signals || {},
+    tribunal: statePacket.tribunal || {},
+    pressure: runtime.pressure || {},
+  };
+  const runtimeControls = { packet_volume: packetVolume, forced_state: pickState || null, forced_mode: pickMode || null };
   const fullSnapshot = { captured_at: new Date().toISOString(), engine_config: engineConfig, memory_status: memoryStatus, runtime_last: runtimeLast, session: sessionDoc, runtime };
   const egressStack = [
     ['runtime', Boolean(runtimeLast?.ok)], ['state', Boolean(runtime.state)], ['broker', Boolean(runtime.packet_broker)], ['memory', Boolean(runtime.memory)], ['local disk', Boolean(memoryStatus?.writable)], ['prompt window', Boolean(runtime.prompt_window)], ['history', Boolean(history.length)],
   ];
 
   const setFlag = (key, value) => setRuntimeFlags((prev) => ({ ...normalizeFlags(prev), [key]: value }));
+  const copyCard = async (title, value) => { await navigator.clipboard.writeText(safeJson(value)); setMsg(`${title.toLowerCase()} copied`); };
 
   const load = useCallback(async () => {
     if (!session?.access_token || !user?.id) return;
@@ -156,7 +185,6 @@ export default function Admin() {
     } catch (e) { setMsg(e?.response?.data?.detail || e.message); } finally { setBusy(false); }
   };
   const copySnapshot = async () => { await navigator.clipboard.writeText(safeJson(fullSnapshot)); setMsg('snapshot copied'); };
-  const copyMemoryStatus = async () => { await navigator.clipboard.writeText(safeJson(memoryStatus)); setMsg('memory status copied'); };
 
   if (loading) return <div className="engine-admin">…</div>;
   if (forbidden) return <div className="engine-admin"><div className="engine-card engine-card-wide"><div className="engine-card-body">403 · admin only</div></div></div>;
@@ -170,27 +198,31 @@ export default function Admin() {
       </header>
       {msg && <div className="engine-message">{msg}</div>}
       <main className="engine-grid">
-        <Card title="System Values" subtitle="Fast read of the live engine state." wide>
-          <div className="value-grid"><Chip label="turns" value={runtimeLast?.turn_count ?? 0} /><Chip label="state" value={statePacket.state} /><Chip label="mode" value={statePacket.mode} /><Chip label="zone" value={statePacket.zone} /><Chip label="broker" value={brokerPacket.volume ?? engineConfig?.packet_broker?.volume ?? 0} /><Chip label="history cap" value={runtimeFlags.prompt_history_turns} /><Chip label="runtime keys" value={(runtimeLast?.runtime_keys || []).length} /><Chip label="local memory" value={memoryStatus?.writable ? 'writable' : 'check'} /></div>
+        <Card title="System Values" subtitle="Fast read of the live engine state." wide copyValue={systemValues} onCopy={copyCard}>
+          <div className="value-grid"><Chip label="turns" value={systemValues.turn_count} /><Chip label="state" value={systemValues.state} /><Chip label="mode" value={systemValues.mode} /><Chip label="zone" value={systemValues.zone} /><Chip label="broker" value={systemValues.broker_volume} /><Chip label="history cap" value={systemValues.prompt_history_turns} /><Chip label="runtime keys" value={systemValues.runtime_keys.length} /><Chip label="local memory" value={systemValues.local_memory_writable ? 'writable' : 'check'} /></div>
           <div className="egress-stack">{egressStack.map(([label, active]) => <span key={label} className="egress-chip" data-active={active ? 'true' : 'false'}>{label}</span>)}</div>
         </Card>
-        <Card title="Local Memory Body" subtitle="Persistent Render disk status for BRUNEL chronological memory." actions={<button className="engine-mini-btn" onClick={copyMemoryStatus}>Copy Status</button>} wide>
+        <Card title="Local Memory Body" subtitle="Persistent Render disk status for BRUNEL chronological memory." wide copyValue={memoryStatus} onCopy={copyCard}>
           <div className="value-grid"><Chip label="ok" value={memoryStatus?.ok ? 'yes' : 'no'} /><Chip label="env" value={memoryStatus?.env_present ? 'set' : 'missing'} /><Chip label="exists" value={memoryStatus?.exists ? 'yes' : 'no'} /><Chip label="writable" value={memoryStatus?.writable ? 'yes' : 'no'} /><Chip label="memory dir" value={memoryStatus?.memory_dir || '—'} /><Chip label="free" value={bytes(memoryStatus?.disk?.free_bytes)} /><Chip label="used" value={bytes(memoryStatus?.disk?.used_bytes)} /><Chip label="recent files" value={(memoryStatus?.recent_files || []).length} /></div>
           <JsonPanel value={memoryStatus} maxHeight={280} />
         </Card>
-        <Card title="Runtime Controls" subtitle="Admin override board.">
+        <Card title="Runtime Controls" subtitle="Admin override board." copyValue={runtimeControls} onCopy={copyCard}>
           <div className="engine-control-row"><label><span>Packet Broker Volume</span><input type="range" min="0" max="100" value={packetVolume} onChange={(e) => setPacketVolume(e.target.value)} /><strong>{packetVolume}</strong></label></div>
           <div className="engine-two-col"><label className="engine-field"><span>Forced State</span><input value={pickState} onChange={(e) => setPickState(e.target.value)} placeholder="natural" /></label><label className="engine-field"><span>Forced Mode</span><input value={pickMode} onChange={(e) => setPickMode(e.target.value)} placeholder="natural" /></label></div>
           <div className="engine-button-row"><button className="engine-btn engine-btn-primary" onClick={applyRuntime} disabled={busy}>{busy ? 'Applying...' : 'Apply Controls'}</button><button className="engine-btn" onClick={clearOverrides} disabled={busy}>Clear State / Mode</button></div>
         </Card>
-        <Card title="Runtime Flags" subtitle="Prompt influence switches.">
+        <Card title="Runtime Flags" subtitle="Prompt influence switches." copyValue={runtimeFlags} onCopy={copyCard}>
           <div className="engine-control-row"><label><span>Prompt History Turns</span><input type="range" min="0" max="80" value={runtimeFlags.prompt_history_turns ?? 0} onChange={(e) => setFlag('prompt_history_turns', Number(e.target.value))} /><strong>{runtimeFlags.prompt_history_turns ?? 0}</strong></label></div>
           <div className="engine-toggle-grid">{FLAG_LABELS.map(([key, label]) => <button key={key} type="button" className="engine-toggle" data-active={runtimeFlags[key] ? 'true' : 'false'} onClick={() => setFlag(key, !runtimeFlags[key])}>{runtimeFlags[key] ? 'ON' : 'OFF'} · {label}</button>)}</div>
         </Card>
-        <Card title="Memory / Context" subtitle="Working memory and prompt memory packet."><JsonPanel value={memoryPacket} maxHeight={320} /></Card>
-        <Card title="Packet Broker" subtitle="Last packet broker packet."><JsonPanel value={brokerPacket} maxHeight={260} /></Card>
-        <Card title="Prompt Window" subtitle="Captured system prompt leaving Core." wide><JsonPanel value={promptWindow} maxHeight={420} /></Card>
-        <Card title="Full Runtime Packet" subtitle="Everything captured from the engine for the last turn." wide><JsonPanel value={runtime} maxHeight={520} /></Card>
+        <Card title="Active Seed" subtitle="Current response seed summary." wide copyValue={activeSeed} onCopy={copyCard}><JsonPanel value={activeSeed} maxHeight={260} /></Card>
+        <Card title="Memory / Context" subtitle="Working memory and prompt memory packet." copyValue={memoryPacket} onCopy={copyCard}><JsonPanel value={memoryPacket} maxHeight={320} /></Card>
+        <Card title="Packet Broker" subtitle="Last packet broker packet." copyValue={brokerPacket} onCopy={copyCard}><JsonPanel value={brokerPacket} maxHeight={260} /></Card>
+        <Card title="Prompt Builder" subtitle="Prompt packet metadata." copyValue={promptPacket} onCopy={copyCard}><JsonPanel value={promptPacket} maxHeight={260} /></Card>
+        <Card title="Prompt Window" subtitle="Captured system prompt leaving Core." wide copyValue={promptWindow} onCopy={copyCard}><JsonPanel value={promptWindow} maxHeight={420} /></Card>
+        <Card title="Prompt Sections" subtitle="PROMPT WINDOW sections extracted for inspection." wide copyValue={promptSections} onCopy={copyCard}><JsonPanel value={promptSections} maxHeight={420} /></Card>
+        <Card title="Session" subtitle="Current saved BRUNEL session document." wide copyValue={sessionDoc} onCopy={copyCard}><JsonPanel value={sessionDoc} maxHeight={420} /></Card>
+        <Card title="Full Runtime Packet" subtitle="Everything captured from the engine for the last turn." wide copyValue={runtime} onCopy={copyCard}><JsonPanel value={runtime} maxHeight={520} /></Card>
       </main>
     </div>
   );
