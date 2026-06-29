@@ -32,11 +32,11 @@ const FLAG_LABELS = [
 
 const INSPECTION_CARD_DEFAULTS = {
   system: true,
+  recall: false,
+  persona: false,
   memoryBody: false,
   activeSeed: false,
-  persona: false,
   memory: false,
-  recall: false,
   broker: false,
   promptBuilder: false,
   promptWindow: false,
@@ -46,43 +46,50 @@ const INSPECTION_CARD_DEFAULTS = {
 };
 
 const CSS = `
-.engine-admin { min-height: 100dvh; overflow-y: auto; padding: 14px; background: #05080b; color: #e8fff0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-.engine-admin-topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 1px solid rgba(80,255,150,0.22); padding-bottom: 12px; margin-bottom: 12px; }
-.engine-brand-name { color: #d7b35a; font-size: 20px; letter-spacing: 0.22em; }
-.engine-brand-sub { color: #7dffae; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; margin-top: 4px; }
-.engine-admin-actions, .engine-button-row, .engine-card-actions, .value-grid, .egress-stack { display: flex; flex-wrap: wrap; gap: 7px; }
-.engine-grid, .engine-controls-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px; }
-.engine-controls-grid { margin-bottom: 12px; }
-.engine-section-label { color: rgba(232,255,240,0.56); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; margin: 12px 0 8px; }
+.engine-admin { min-height: 100dvh; overflow-y: auto; padding: 10px; background: #05080b; color: #e8fff0; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.engine-admin-topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; border-bottom: 1px solid rgba(80,255,150,0.22); padding-bottom: 10px; margin-bottom: 10px; }
+.engine-brand-name { color: #d7b35a; font-size: 19px; letter-spacing: 0.22em; }
+.engine-brand-sub { color: #7dffae; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; margin-top: 4px; }
+.engine-admin-actions, .engine-button-row, .engine-card-actions, .value-grid, .egress-stack { display: flex; flex-wrap: wrap; gap: 6px; }
+.engine-grid, .engine-controls-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px; }
+.engine-controls-shell { position: sticky; top: 0; z-index: 5; background: linear-gradient(180deg, #05080b 0%, rgba(5,8,11,0.96) 82%, rgba(5,8,11,0) 100%); padding-bottom: 8px; margin-bottom: 4px; }
+.engine-controls-grid { margin-bottom: 8px; }
+.engine-section-label { color: rgba(232,255,240,0.56); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; margin: 10px 0 7px; }
 .engine-card { grid-column: span 6; border: 1px solid rgba(80,255,150,0.18); background: rgba(8,14,20,0.92); min-width: 0; }
 .engine-card-wide { grid-column: span 12; }
-.engine-card-head { display: flex; justify-content: space-between; gap: 8px; padding: 10px 12px; border-bottom: 1px solid rgba(80,255,150,0.12); background: rgba(80,255,150,0.035); }
+.engine-card[data-tone='control'] { border-color: rgba(215,179,90,0.42); background: rgba(20,16,8,0.92); }
+.engine-card[data-tone='control'] .engine-card-title, .engine-card[data-tone='control'] .engine-card-caret { color: #d7b35a; }
+.engine-card[data-tone='memory'] { border-color: rgba(78,164,255,0.34); background: rgba(7,13,23,0.92); }
+.engine-card[data-tone='memory'] .engine-card-title, .engine-card[data-tone='memory'] .engine-card-caret { color: #8fc5ff; }
+.engine-card[data-tone='runtime'] { border-color: rgba(80,255,150,0.2); }
+.engine-card[data-tone='warning'] { border-color: rgba(255,100,100,0.34); background: rgba(23,8,9,0.92); }
+.engine-card-head { display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; border-bottom: 1px solid rgba(80,255,150,0.12); background: rgba(80,255,150,0.035); }
 .engine-card-head[data-collapsible='true'] { cursor: pointer; }
 .engine-card-title-row { display: flex; align-items: center; gap: 8px; }
 .engine-card-caret { color: #d7b35a; font-size: 10px; min-width: 12px; }
 .engine-card-title { color: #7dffae; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; }
-.engine-card-subtitle { color: rgba(232,255,240,0.58); font-size: 9px; margin-top: 3px; }
-.engine-card-body { padding: 12px; }
+.engine-card-subtitle { color: rgba(232,255,240,0.58); font-size: 9px; margin-top: 3px; line-height: 1.25; }
+.engine-card-body { padding: 10px; }
 .engine-card-collapsed { display: none; }
-.engine-btn, .engine-mini-btn { background: transparent; border: 1px solid rgba(80,255,150,0.24); color: #7dffae; font: inherit; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; padding: 8px 10px; cursor: pointer; }
-.engine-mini-btn { padding: 5px 8px; font-size: 8px; }
+.engine-btn, .engine-mini-btn { background: transparent; border: 1px solid rgba(80,255,150,0.24); color: #7dffae; font: inherit; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; padding: 7px 9px; cursor: pointer; }
+.engine-mini-btn { padding: 5px 8px; font-size: 8px; align-self: center; }
 .engine-btn-primary { border-color: #d7b35a; color: #d7b35a; }
 .engine-btn-dim { color: rgba(232,255,240,0.56); border-color: rgba(232,255,240,0.16); }
 .engine-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.engine-message { border: 1px solid rgba(215,179,90,0.5); color: #d7b35a; background: rgba(215,179,90,0.08); padding: 8px 10px; margin-bottom: 12px; font-size: 10px; }
-.value-chip, .egress-chip { display: inline-flex; border: 1px solid rgba(232,255,240,0.14); color: rgba(232,255,240,0.72); background: rgba(255,255,255,0.025); padding: 4px 8px; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
+.engine-message { border: 1px solid rgba(215,179,90,0.5); color: #d7b35a; background: rgba(215,179,90,0.08); padding: 8px 10px; margin-bottom: 10px; font-size: 10px; }
+.value-chip, .egress-chip { display: inline-flex; border: 1px solid rgba(232,255,240,0.14); color: rgba(232,255,240,0.72); background: rgba(255,255,255,0.025); padding: 4px 7px; font-size: 8px; letter-spacing: 0.08em; text-transform: uppercase; }
 .value-chip strong { color: #7dffae; margin-left: 6px; }
 .egress-chip[data-active='true'] { color: #7dffae; border-color: rgba(80,255,150,0.3); background: rgba(80,255,150,0.06); }
-.engine-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.engine-field, .engine-control-row label { display: flex; flex-direction: column; gap: 7px; color: rgba(232,255,240,0.68); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
-.engine-field input { background: rgba(0,0,0,0.32); border: 1px solid rgba(232,255,240,0.16); color: #fff; padding: 9px 10px; font: inherit; }
+.engine-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.engine-field, .engine-control-row label { display: flex; flex-direction: column; gap: 6px; color: rgba(232,255,240,0.68); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; }
+.engine-field input { background: rgba(0,0,0,0.32); border: 1px solid rgba(232,255,240,0.16); color: #fff; padding: 8px 9px; font: inherit; }
 .engine-control-row input[type='range'] { width: 100%; accent-color: #7dffae; }
-.engine-control-row strong { color: #7dffae; font-size: 22px; }
-.engine-toggle-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.engine-toggle { text-align: left; background: rgba(255,255,255,0.02); border: 1px solid rgba(232,255,240,0.14); color: rgba(232,255,240,0.68); font: inherit; padding: 9px; cursor: pointer; }
+.engine-control-row strong { color: #7dffae; font-size: 20px; }
+.engine-toggle-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.engine-toggle { text-align: left; background: rgba(255,255,255,0.02); border: 1px solid rgba(232,255,240,0.14); color: rgba(232,255,240,0.68); font: inherit; padding: 8px; cursor: pointer; }
 .engine-toggle[data-active='true'] { color: #7dffae; border-color: rgba(80,255,150,0.5); background: rgba(80,255,150,0.08); }
-.engine-json { white-space: pre-wrap; word-break: break-word; overflow: auto; background: rgba(0,0,0,0.42); color: #e8fff0; border: 1px solid rgba(232,255,240,0.12); padding: 12px; font-size: 11px; line-height: 1.55; }
-@media (max-width: 900px) { .engine-admin { padding: 10px; } .engine-admin-topbar { flex-direction: column; } .engine-card, .engine-card-wide { grid-column: span 12; } .engine-two-col, .engine-toggle-grid { grid-template-columns: 1fr; } }
+.engine-json { white-space: pre-wrap; word-break: break-word; overflow: auto; background: rgba(0,0,0,0.42); color: #e8fff0; border: 1px solid rgba(232,255,240,0.12); padding: 10px; font-size: 11px; line-height: 1.5; }
+@media (max-width: 900px) { .engine-admin { padding: 8px; } .engine-admin-topbar { flex-direction: column; } .engine-card, .engine-card-wide { grid-column: span 12; } .engine-two-col, .engine-toggle-grid { grid-template-columns: 1fr; } .engine-card-head { padding: 8px 9px; } .engine-card-body { padding: 9px; } }
 `;
 
 function normalizeFlags(flags) { return { ...DEFAULT_RUNTIME_FLAGS, ...(flags || {}) }; }
@@ -94,17 +101,16 @@ function bytes(value) {
   const idx = Math.min(units.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
   return `${(n / Math.pow(1024, idx)).toFixed(idx ? 1 : 0)} ${units[idx]}`;
 }
-function Card({ title, subtitle, children, wide = false, copyValue, onCopy, collapsible = true, open = true, onToggle }) {
+function Card({ title, subtitle, children, wide = false, copyValue, onCopy, collapsible = true, open = true, onToggle, tone = 'runtime' }) {
   const actions = copyValue === undefined ? null : <button className="engine-mini-btn" onClick={(event) => { event.stopPropagation(); onCopy(title, copyValue); }}>Copy</button>;
-  const toggle = collapsible ? <button className="engine-mini-btn" onClick={(event) => { event.stopPropagation(); onToggle?.(); }}>{open ? 'Collapse' : 'Expand'}</button> : null;
   return (
-    <section className={`engine-card${wide ? ' engine-card-wide' : ''}`}>
+    <section className={`engine-card${wide ? ' engine-card-wide' : ''}`} data-tone={tone}>
       <div className="engine-card-head" data-collapsible={collapsible ? 'true' : 'false'} onClick={collapsible ? onToggle : undefined}>
         <div>
           <div className="engine-card-title-row"><span className="engine-card-caret">{collapsible ? (open ? '▾' : '▸') : ''}</span><div className="engine-card-title">{title}</div></div>
           {subtitle && <div className="engine-card-subtitle">{subtitle}</div>}
         </div>
-        <div className="engine-card-actions">{toggle}{actions}</div>
+        <div className="engine-card-actions">{actions}</div>
       </div>
       <div className={`engine-card-body${collapsible && !open ? ' engine-card-collapsed' : ''}`}>{children}</div>
     </section>
@@ -233,7 +239,7 @@ export default function Admin() {
   const copySnapshot = async () => { await navigator.clipboard.writeText(safeJson(fullSnapshot)); setMsg('snapshot copied'); };
 
   if (loading) return <div className="engine-admin">…</div>;
-  if (forbidden) return <div className="engine-admin"><div className="engine-card engine-card-wide"><div className="engine-card-body">403 · admin only</div></div></div>;
+  if (forbidden) return <div className="engine-admin"><div className="engine-card engine-card-wide" data-tone="warning"><div className="engine-card-body">403 · admin only</div></div></div>;
 
   return (
     <div className="engine-admin" data-testid="admin-page">
@@ -244,45 +250,47 @@ export default function Admin() {
       </header>
       {msg && <div className="engine-message">{msg}</div>}
 
-      <div className="engine-section-label">Controls</div>
-      <section className="engine-controls-grid">
-        <Card title="Runtime Controls" subtitle="Admin override board." copyValue={runtimeControls} onCopy={copyCard} collapsible={false}>
-          <div className="engine-control-row"><label><span>Packet Broker Volume</span><input type="range" min="0" max="100" value={packetVolume} onChange={(e) => setPacketVolume(e.target.value)} /><strong>{packetVolume}</strong></label></div>
-          <div className="engine-two-col"><label className="engine-field"><span>Forced State</span><input value={pickState} onChange={(e) => setPickState(e.target.value)} placeholder="natural" /></label><label className="engine-field"><span>Forced Mode</span><input value={pickMode} onChange={(e) => setPickMode(e.target.value)} placeholder="natural" /></label></div>
-          <div className="engine-button-row"><button className="engine-btn engine-btn-primary" onClick={applyRuntime} disabled={busy}>{busy ? 'Applying...' : 'Apply Controls'}</button><button className="engine-btn" onClick={clearOverrides} disabled={busy}>Clear State / Mode</button></div>
-        </Card>
-        <Card title="Runtime Flags" subtitle="Prompt influence switches." copyValue={runtimeFlags} onCopy={copyCard} collapsible={false}>
-          <div className="engine-control-row"><label><span>Prompt History Turns</span><input type="range" min="0" max="80" value={runtimeFlags.prompt_history_turns ?? 0} onChange={(e) => setFlag('prompt_history_turns', Number(e.target.value))} /><strong>{runtimeFlags.prompt_history_turns ?? 0}</strong></label></div>
-          <div className="engine-toggle-grid">{FLAG_LABELS.map(([key, label]) => <button key={key} type="button" className="engine-toggle" data-active={runtimeFlags[key] ? 'true' : 'false'} onClick={() => setFlag(key, !runtimeFlags[key])}>{runtimeFlags[key] ? 'ON' : 'OFF'} · {label}</button>)}</div>
-        </Card>
-      </section>
+      <div className="engine-controls-shell">
+        <div className="engine-section-label">Controls</div>
+        <section className="engine-controls-grid">
+          <Card title="Runtime Controls" subtitle="Admin override board." copyValue={runtimeControls} onCopy={copyCard} collapsible={false} tone="control">
+            <div className="engine-control-row"><label><span>Packet Broker Volume</span><input type="range" min="0" max="100" value={packetVolume} onChange={(e) => setPacketVolume(e.target.value)} /><strong>{packetVolume}</strong></label></div>
+            <div className="engine-two-col"><label className="engine-field"><span>Forced State</span><input value={pickState} onChange={(e) => setPickState(e.target.value)} placeholder="natural" /></label><label className="engine-field"><span>Forced Mode</span><input value={pickMode} onChange={(e) => setPickMode(e.target.value)} placeholder="natural" /></label></div>
+            <div className="engine-button-row"><button className="engine-btn engine-btn-primary" onClick={applyRuntime} disabled={busy}>{busy ? 'Applying...' : 'Apply Controls'}</button><button className="engine-btn" onClick={clearOverrides} disabled={busy}>Clear State / Mode</button></div>
+          </Card>
+          <Card title="Runtime Flags" subtitle="Prompt influence switches." copyValue={runtimeFlags} onCopy={copyCard} collapsible={false} tone="control">
+            <div className="engine-control-row"><label><span>Prompt History Turns</span><input type="range" min="0" max="80" value={runtimeFlags.prompt_history_turns ?? 0} onChange={(e) => setFlag('prompt_history_turns', Number(e.target.value))} /><strong>{runtimeFlags.prompt_history_turns ?? 0}</strong></label></div>
+            <div className="engine-toggle-grid">{FLAG_LABELS.map(([key, label]) => <button key={key} type="button" className="engine-toggle" data-active={runtimeFlags[key] ? 'true' : 'false'} onClick={() => setFlag(key, !runtimeFlags[key])}>{runtimeFlags[key] ? 'ON' : 'OFF'} · {label}</button>)}</div>
+          </Card>
+        </section>
+      </div>
 
       <div className="engine-section-label">Inspection cards</div>
       <main className="engine-grid">
-        <Card title="System Values" subtitle="Fast read of the live engine state." wide copyValue={systemValues} onCopy={copyCard} open={openCards.system} onToggle={() => toggleCard('system')}>
+        <Card title="System Values" subtitle="Fast read of the live engine state." wide copyValue={systemValues} onCopy={copyCard} open={openCards.system} onToggle={() => toggleCard('system')} tone="runtime">
           <div className="value-grid"><Chip label="turns" value={systemValues.turn_count} /><Chip label="persona" value={systemValues.persona} /><Chip label="state" value={systemValues.state} /><Chip label="mode" value={systemValues.mode} /><Chip label="zone" value={systemValues.zone} /><Chip label="broker" value={systemValues.broker_volume} /><Chip label="history cap" value={systemValues.prompt_history_turns} /><Chip label="runtime keys" value={systemValues.runtime_keys.length} /><Chip label="local memory" value={systemValues.local_memory_writable ? 'writable' : 'check'} /><Chip label="persona packet" value={systemValues.persona_packet_live_path ? 'live' : 'quiet'} /><Chip label="recall" value={systemValues.recall_live_path ? 'live' : 'quiet'} /><Chip label="recall items" value={systemValues.recall_items} /></div>
           <div className="egress-stack">{egressStack.map(([label, active]) => <span key={label} className="egress-chip" data-active={active ? 'true' : 'false'}>{label}</span>)}</div>
         </Card>
-        <Card title="Local Memory Body" subtitle="Persistent Render disk status for BRUNEL chronological memory." wide copyValue={memoryStatus} onCopy={copyCard} open={openCards.memoryBody} onToggle={() => toggleCard('memoryBody')}>
-          <div className="value-grid"><Chip label="ok" value={memoryStatus?.ok ? 'yes' : 'no'} /><Chip label="env" value={memoryStatus?.env_present ? 'set' : 'missing'} /><Chip label="exists" value={memoryStatus?.exists ? 'yes' : 'no'} /><Chip label="writable" value={memoryStatus?.writable ? 'yes' : 'no'} /><Chip label="memory dir" value={memoryStatus?.memory_dir || '—'} /><Chip label="free" value={bytes(memoryStatus?.disk?.free_bytes)} /><Chip label="used" value={bytes(memoryStatus?.disk?.used_bytes)} /><Chip label="recent files" value={(memoryStatus?.recent_files || []).length} /></div>
-          <JsonPanel value={memoryStatus} maxHeight={280} />
-        </Card>
-        <Card title="Active Seed" subtitle="Current response seed summary." wide copyValue={activeSeed} onCopy={copyCard} open={openCards.activeSeed} onToggle={() => toggleCard('activeSeed')}><JsonPanel value={activeSeed} maxHeight={260} /></Card>
-        <Card title="Persona Packet" subtitle="Explicit BRUNEL identity, active profile, and silent behavior rules." wide copyValue={personaPacket} onCopy={copyCard} open={openCards.persona} onToggle={() => toggleCard('persona')}>
-          <div className="value-grid"><Chip label="engaged" value={personaPacket?.engaged ? 'yes' : 'no'} /><Chip label="persona" value={personaPacket?.persona_id || 'BRUNEL'} /><Chip label="state" value={personaPacket?.active_profile?.state || '—'} /><Chip label="mode" value={personaPacket?.active_profile?.mode || '—'} /><Chip label="prompt" value={personaPacket?.persona_packet_prompt_included ? 'included' : 'quiet'} /></div>
-          <JsonPanel value={personaPacket} maxHeight={360} />
-        </Card>
-        <Card title="Memory / Context" subtitle="Working memory and prompt memory packet." copyValue={memoryPacket} onCopy={copyCard} open={openCards.memory} onToggle={() => toggleCard('memory')}><JsonPanel value={memoryPacket} maxHeight={320} /></Card>
-        <Card title="Chronological Recall" subtitle="Selective native memory recall packet from the local chronological body." copyValue={recallPacket} onCopy={copyCard} open={openCards.recall} onToggle={() => toggleCard('recall')}>
+        <Card title="Chronological Recall" subtitle="Selective native memory recall packet from the local chronological body." copyValue={recallPacket} onCopy={copyCard} open={openCards.recall} onToggle={() => toggleCard('recall')} tone="memory">
           <div className="value-grid"><Chip label="triggered" value={recallPacket?.triggered ? 'yes' : 'no'} /><Chip label="items" value={(recallPacket?.items || []).length} /><Chip label="source" value={recallPacket?.metadata?.source || '—'} /><Chip label="stuffing" value={recallPacket?.metadata?.context_stuffing === false ? 'no' : 'check'} /></div>
           <JsonPanel value={recallPacket} maxHeight={320} />
         </Card>
-        <Card title="Packet Broker" subtitle="Last packet broker packet." copyValue={brokerPacket} onCopy={copyCard} open={openCards.broker} onToggle={() => toggleCard('broker')}><JsonPanel value={brokerPacket} maxHeight={260} /></Card>
-        <Card title="Prompt Builder" subtitle="Prompt packet metadata." copyValue={promptPacket} onCopy={copyCard} open={openCards.promptBuilder} onToggle={() => toggleCard('promptBuilder')}><JsonPanel value={promptPacket} maxHeight={260} /></Card>
-        <Card title="Prompt Window" subtitle="Captured system prompt leaving Core." wide copyValue={promptWindow} onCopy={copyCard} open={openCards.promptWindow} onToggle={() => toggleCard('promptWindow')}><JsonPanel value={promptWindow} maxHeight={420} /></Card>
-        <Card title="Prompt Sections" subtitle="PROMPT WINDOW sections extracted for inspection." wide copyValue={promptSections} onCopy={copyCard} open={openCards.promptSections} onToggle={() => toggleCard('promptSections')}><JsonPanel value={promptSections} maxHeight={420} /></Card>
-        <Card title="Session" subtitle="Current saved BRUNEL session document." wide copyValue={sessionDoc} onCopy={copyCard} open={openCards.session} onToggle={() => toggleCard('session')}><JsonPanel value={sessionDoc} maxHeight={420} /></Card>
-        <Card title="Full Runtime Packet" subtitle="Everything captured from the engine for the last turn." wide copyValue={runtime} onCopy={copyCard} open={openCards.runtime} onToggle={() => toggleCard('runtime')}><JsonPanel value={runtime} maxHeight={520} /></Card>
+        <Card title="Persona Packet" subtitle="Explicit BRUNEL identity, active profile, and silent behavior rules." wide copyValue={personaPacket} onCopy={copyCard} open={openCards.persona} onToggle={() => toggleCard('persona')} tone="runtime">
+          <div className="value-grid"><Chip label="engaged" value={personaPacket?.engaged ? 'yes' : 'no'} /><Chip label="persona" value={personaPacket?.persona_id || 'BRUNEL'} /><Chip label="state" value={personaPacket?.active_profile?.state || '—'} /><Chip label="mode" value={personaPacket?.active_profile?.mode || '—'} /><Chip label="prompt" value={personaPacket?.persona_packet_prompt_included ? 'included' : 'quiet'} /></div>
+          <JsonPanel value={personaPacket} maxHeight={360} />
+        </Card>
+        <Card title="Local Memory Body" subtitle="Persistent Render disk status for BRUNEL chronological memory." wide copyValue={memoryStatus} onCopy={copyCard} open={openCards.memoryBody} onToggle={() => toggleCard('memoryBody')} tone="memory">
+          <div className="value-grid"><Chip label="ok" value={memoryStatus?.ok ? 'yes' : 'no'} /><Chip label="env" value={memoryStatus?.env_present ? 'set' : 'missing'} /><Chip label="exists" value={memoryStatus?.exists ? 'yes' : 'no'} /><Chip label="writable" value={memoryStatus?.writable ? 'yes' : 'no'} /><Chip label="memory dir" value={memoryStatus?.memory_dir || '—'} /><Chip label="free" value={bytes(memoryStatus?.disk?.free_bytes)} /><Chip label="used" value={bytes(memoryStatus?.disk?.used_bytes)} /><Chip label="recent files" value={(memoryStatus?.recent_files || []).length} /></div>
+          <JsonPanel value={memoryStatus} maxHeight={280} />
+        </Card>
+        <Card title="Active Seed" subtitle="Current response seed summary." wide copyValue={activeSeed} onCopy={copyCard} open={openCards.activeSeed} onToggle={() => toggleCard('activeSeed')} tone="runtime"><JsonPanel value={activeSeed} maxHeight={260} /></Card>
+        <Card title="Memory / Context" subtitle="Working memory and prompt memory packet." copyValue={memoryPacket} onCopy={copyCard} open={openCards.memory} onToggle={() => toggleCard('memory')} tone="memory"><JsonPanel value={memoryPacket} maxHeight={320} /></Card>
+        <Card title="Packet Broker" subtitle="Last packet broker packet." copyValue={brokerPacket} onCopy={copyCard} open={openCards.broker} onToggle={() => toggleCard('broker')} tone="runtime"><JsonPanel value={brokerPacket} maxHeight={260} /></Card>
+        <Card title="Prompt Builder" subtitle="Prompt packet metadata." copyValue={promptPacket} onCopy={copyCard} open={openCards.promptBuilder} onToggle={() => toggleCard('promptBuilder')} tone="runtime"><JsonPanel value={promptPacket} maxHeight={260} /></Card>
+        <Card title="Prompt Window" subtitle="Captured system prompt leaving Core." wide copyValue={promptWindow} onCopy={copyCard} open={openCards.promptWindow} onToggle={() => toggleCard('promptWindow')} tone="runtime"><JsonPanel value={promptWindow} maxHeight={420} /></Card>
+        <Card title="Prompt Sections" subtitle="PROMPT WINDOW sections extracted for inspection." wide copyValue={promptSections} onCopy={copyCard} open={openCards.promptSections} onToggle={() => toggleCard('promptSections')} tone="runtime"><JsonPanel value={promptSections} maxHeight={420} /></Card>
+        <Card title="Session" subtitle="Current saved BRUNEL session document." wide copyValue={sessionDoc} onCopy={copyCard} open={openCards.session} onToggle={() => toggleCard('session')} tone="runtime"><JsonPanel value={sessionDoc} maxHeight={420} /></Card>
+        <Card title="Full Runtime Packet" subtitle="Everything captured from the engine for the last turn." wide copyValue={runtime} onCopy={copyCard} open={openCards.runtime} onToggle={() => toggleCard('runtime')} tone="runtime"><JsonPanel value={runtime} maxHeight={520} /></Card>
       </main>
     </div>
   );
