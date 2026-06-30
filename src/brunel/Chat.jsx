@@ -25,6 +25,7 @@ const formatFileSize = (bytes = 0) => bytes < 1024 ? `${bytes} B` : bytes < 1024
 const formatAbsoluteTime = (iso) => { if (!iso) return ""; const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : TIME_FORMATTER.format(d); };
 const formatRelativeTime = (iso) => { if (!iso) return ""; const then = new Date(iso).getTime(); if (Number.isNaN(then)) return ""; const m = Math.floor((Date.now() - then) / 60000); if (m < 1) return "just now"; if (m < 60) return `${m}m ago`; const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`; const d = Math.floor(h / 24); if (d < 30) return `${d}d ago`; const mo = Math.floor(d / 30); if (mo < 12) return `${mo}mo ago`; return `${Math.floor(d / 365)}y ago`; };
 const formatTimeLabel = (iso) => { const a = formatAbsoluteTime(iso); const r = formatRelativeTime(iso); return a ? `${a} · ${r}` : ""; };
+const formatLatency = (ms) => { const n = Number(ms); if (!Number.isFinite(n) || n < 0) return ""; if (n < 1000) return `${Math.round(n)}ms`; if (n < 10000) return `${(n / 1000).toFixed(1)}s`; return `${Math.round(n / 1000)}s`; };
 const loadStoredSkin = () => { try { return window.localStorage.getItem("brunel-skin") || "desk"; } catch (_) { return "desk"; } };
 const loadStoredModel = () => { try { return normalizeModelChoice(window.localStorage.getItem("brunel-model")); } catch (_) { return DEFAULT_MODEL_CHOICE; } };
 const loadInitialViewMode = () => { try { return window.matchMedia("(min-width: 901px)").matches ? "double" : "single"; } catch (_) { return "single"; } };
@@ -79,7 +80,7 @@ function Chat() {
         const d = r.data;
         setMessages((d.rk_history || []).flatMap((t, index) => [
           { id: `hydrated-user-${index}`, role: "user", content: t.user, ts: t.ts || null, attachment: t.attachment || null },
-          { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null, state: t.current_state_id || "St0", mode: t.current_mode_id || "011", modelLabel: t.model_label || null },
+          { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null, state: t.current_state_id || "St0", mode: t.current_mode_id || "011", modelLabel: t.model_label || null, latencyMs: t.response_ms || t.latency_ms || null },
         ]));
       } catch (e) { console.warn("session hydrate failed", e); }
     })();
@@ -131,6 +132,7 @@ function Chat() {
   };
   const send = async () => {
     const msg = text.trim(); if ((!msg && !attachedItem) || sending) return;
+    const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
     const requestDouble = doubleMode; const userId = `user-${Date.now()}`; const assistantId = `assistant-${Date.now() + 1}`; const userTs = nowIso();
     const selectedModelKey = isAdmin ? normalizeModelChoice(selectedModel) : null;
     const selectedModelLabel = isAdmin ? modelChoiceLabel(selectedModelKey) : null;
@@ -139,28 +141,31 @@ function Chat() {
     setSending(true); setText(""); setAttachedItem(null); setMessages((m) => [...m, { id: userId, role: "user", content: msg || "Cybrary item attached", ts: userTs, attachment }]);
     try {
       const r = await axios.post(`${API}/chat`, { message: outbound, target: requestDouble ? "both" : "rk_only", model: selectedModelKey, client_ts: userTs, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null, cybrary_item_ids: attachment ? [attachment.id] : [] }, { headers: authHeader, timeout: 45000 });
-      const d = r.data; const content = d.rk_response || d.plain_response || ""; const assistantTs = d.ts || d.created_at || nowIso();
-      setMessages((m) => [...m, { id: assistantId, role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: assistantTs, state: d.current_state_id || "St0", mode: d.current_mode_id || "011", modelLabel: selectedModelLabel }]);
+      const elapsedMs = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - startedAt);
+      const d = r.data; const content = d.rk_response || d.plain_response || ""; const assistantTs = d.ts || d.created_at || nowIso(); const responseMs = Number(d.response_ms ?? d.latency_ms ?? elapsedMs);
+      setMessages((m) => [...m, { id: assistantId, role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: assistantTs, state: d.current_state_id || "St0", mode: d.current_mode_id || "011", modelLabel: selectedModelLabel, latencyMs: responseMs }]);
     } catch (e) {
+      const elapsedMs = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - startedAt);
       const detail = stringifyEngineError(e?.response?.data?.detail || e?.response?.data || e?.message);
       const errMsg = `[ link to engine failed — ${detail} ]`;
-      setMessages((m) => [...m, { id: assistantId, role: "assistant", content: errMsg, plain: requestDouble ? errMsg : null, ts: nowIso(), state: "St0", mode: "011", modelLabel: selectedModelLabel }]);
+      setMessages((m) => [...m, { id: assistantId, role: "assistant", content: errMsg, plain: requestDouble ? errMsg : null, ts: nowIso(), state: "St0", mode: "011", modelLabel: selectedModelLabel, latencyMs: elapsedMs }]);
     } finally { setSending(false); }
   };
   const onKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } };
   const pairs = useMemo(() => {
     const out = []; let pending = null;
     for (const m of messages) {
-      if (m.role === "user") { if (pending) out.push(pending); pending = { user: m.content, userTs: m.ts, userAttachment: m.attachment || null, assistant: null, plain: null, assistantTs: null, assistantState: "St0", assistantMode: "011", assistantModel: null }; }
-      else if (pending) { pending.assistant = m.content; pending.plain = m.plain || null; pending.assistantTs = m.ts; pending.assistantState = m.state || "St0"; pending.assistantMode = m.mode || "011"; pending.assistantModel = m.modelLabel || null; out.push(pending); pending = null; }
-      else out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: "St0", assistantMode: "011", assistantModel: m.modelLabel || null });
+      if (m.role === "user") { if (pending) out.push(pending); pending = { user: m.content, userTs: m.ts, userAttachment: m.attachment || null, assistant: null, plain: null, assistantTs: null, assistantState: "St0", assistantMode: "011", assistantModel: null, assistantLatencyMs: null }; }
+      else if (pending) { pending.assistant = m.content; pending.plain = m.plain || null; pending.assistantTs = m.ts; pending.assistantState = m.state || "St0"; pending.assistantMode = m.mode || "011"; pending.assistantModel = m.modelLabel || null; pending.assistantLatencyMs = m.latencyMs ?? null; out.push(pending); pending = null; }
+      else out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: "St0", assistantMode: "011", assistantModel: m.modelLabel || null, assistantLatencyMs: m.latencyMs ?? null });
     }
     if (pending) out.push(pending); return out;
   }, [messages]);
   const fmtTs = (iso) => formatTimeLabel(iso);
-  const modelStamp = (p) => p.assistantModel ? `Model: ${p.assistantModel}` : null;
-  const timestampLine = (p) => [modelStamp(p), fmtTs(p.assistantTs || p.userTs)].filter(Boolean).join(" · ");
-  const formatThread = () => pairs.map((p) => [p.user && `[${fmtTs(p.userTs)}]\nYou: ${p.user}`, p.userAttachment && `[Cybrary item: ${p.userAttachment.name} · ${formatFileSize(p.userAttachment.size)}]`, p.plain && `[${fmtTs(p.assistantTs)}]\n${modelStamp(p) ? `${modelStamp(p)}\n` : ""}Standard AI: ${p.plain}`, p.assistant && `[${fmtTs(p.assistantTs)}]\n${modelStamp(p) ? `${modelStamp(p)}\n` : ""}BRUNEL: ${p.assistant}`].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
+  const modelStamp = (p) => p.assistantModel || null;
+  const replyStamp = (p) => p.assistantLatencyMs != null ? `R ${formatLatency(p.assistantLatencyMs)}` : null;
+  const timestampLine = (p) => [modelStamp(p), fmtTs(p.assistantTs || p.userTs), replyStamp(p)].filter(Boolean).join(" · ");
+  const formatThread = () => pairs.map((p) => [p.user && `[${fmtTs(p.userTs)}]\nYou: ${p.user}`, p.userAttachment && `[Cybrary item: ${p.userAttachment.name} · ${formatFileSize(p.userAttachment.size)}]`, p.plain && `[${timestampLine(p)}]\nStandard AI: ${p.plain}`, p.assistant && `[${timestampLine(p)}]\nBRUNEL: ${p.assistant}`].filter(Boolean).join("\n\n")).filter(Boolean).join("\n\n---\n\n");
   const copyThread = async () => { await navigator.clipboard.writeText(formatThread()); setCopiedKey("thread"); window.setTimeout(() => setCopiedKey(null), 1200); };
 
   const renderPanelPairs = (kind) => (
@@ -170,7 +175,7 @@ function Chat() {
           {p.user && <div className="bubble bubble-user">{p.user}{p.userAttachment && <div className="attachment-chip">{p.userAttachment.name} · {formatFileSize(p.userAttachment.size)}</div>}</div>}
           {kind === "plain" && p.plain && <div className="bubble bubble-plain">{p.plain}</div>}
           {kind === "rk" && p.assistant !== null && <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>{p.assistant}</div>}
-          {(p.assistantModel || p.assistantTs || p.userTs) && <div className="pair-timestamp">{timestampLine(p)}</div>}
+          {(p.assistantModel || p.assistantTs || p.userTs || p.assistantLatencyMs != null) && <div className="pair-timestamp">{timestampLine(p)}</div>}
         </div>
       ))}
       {sending && <div className="thinking">considering</div>}
@@ -182,7 +187,7 @@ function Chat() {
         <div key={i} className="pair">
           {p.user && <div className="bubble bubble-user">{p.user}{p.userAttachment && <div className="attachment-chip">{p.userAttachment.name} · {formatFileSize(p.userAttachment.size)}</div>}</div>}
           {p.assistant !== null && <div className={`bubble bubble-assistant ${getAssistantVisualClass({ state: p.assistantState, mode: p.assistantMode })}`}>{p.assistant}</div>}
-          {(p.assistantModel || p.assistantTs || p.userTs) && <div className="pair-timestamp">{timestampLine(p)}</div>}
+          {(p.assistantModel || p.assistantTs || p.userTs || p.assistantLatencyMs != null) && <div className="pair-timestamp">{timestampLine(p)}</div>}
         </div>
       ))}
       {sending && <div className="thinking">considering</div>}
