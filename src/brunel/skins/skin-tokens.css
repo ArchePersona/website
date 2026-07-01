@@ -214,3 +214,23 @@
 .app[data-skin="jarvis"] textarea.input {
   box-shadow: 0 0 14px var(--bronze-glow);
 }
+
+.engine-column-label {
+  font-size: 0 !important;
+}
+
+.engine-column-label::after {
+  color: var(--bronze);
+  font-family: var(--title-font);
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+
+.engine-column-m .engine-column-label::after {
+  content: "MD";
+}
+
+.engine-column-s .engine-column-label::after {
+  content: "ST";
+}
