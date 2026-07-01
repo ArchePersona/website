@@ -18,6 +18,69 @@ const STATE_VISUALS = {
 const MODE_VISUALS = {
   "011": { label: "Companion", className: "mode-companion" }, "111": { label: "Assistant", className: "mode-assistant" }, "211": { label: "Hearth", className: "mode-hearth" }, "311": { label: "Creative", className: "mode-creative" }, "411": { label: "Research", className: "mode-research" }, "511": { label: "Tutor", className: "mode-tutor" }, "611": { label: "Operations", className: "mode-operations" }, "711": { label: "Technical", className: "mode-technical" }, "811": { label: "Sentinel", className: "mode-sentinel" }, "911": { label: "Emergency", className: "mode-emergency" },
 };
+const ENGINE_BANDS = Array.from({ length: 10 }, (_, i) => 9 - i);
+const ENGINE_BAND_COLORS = {
+  0: "#246bff",
+  1: "#168cff",
+  2: "#00abc9",
+  3: "#00b68a",
+  4: "#4fc45a",
+  5: "#a9c83f",
+  6: "#f0d34a",
+  7: "#f5a33b",
+  8: "#ef6b2f",
+  9: "#e23b35",
+};
+const STATE_INDEX_BY_ID = {
+  Chuffed: 0,
+  Warm: 1,
+  Curious: 2,
+  Reflective: 3,
+  Steady: 4,
+  Focused: 5,
+  Skeptical: 6,
+  Guarded: 7,
+  Cross: 8,
+  Shutdown: 9,
+  Gentle: 1,
+  Retreating: 3,
+  Stuck: 6,
+  Avoidant: 7,
+  St0: 0,
+  St1: 1,
+  St2: 2,
+  St3: 3,
+  St4: 4,
+  St5: 5,
+  St6: 6,
+  St7: 7,
+  St8: 8,
+  St9: 9,
+};
+const MODE_INDEX_BY_ID = {
+  NORMAL: 0,
+  RELATIONAL: 1,
+  EXPLORATORY: 2,
+  CLINICAL: 3,
+  PROTECTIVE: 4,
+  "011": 0,
+  "111": 1,
+  "211": 2,
+  "311": 3,
+  "411": 4,
+};
+const normalizeRuntimeIndex = (value, lookup, fallback = 0) => {
+  if (value == null) return fallback;
+  const direct = lookup[value];
+  if (Number.isInteger(direct)) return direct;
+  const upper = String(value).trim().toUpperCase();
+  const normalized = lookup[upper];
+  if (Number.isInteger(normalized)) return normalized;
+  const digit = upper.match(/[0-9]/)?.[0];
+  return digit ? Math.max(0, Math.min(9, Number(digit))) : fallback;
+};
+const getStateIndex = (state) => normalizeRuntimeIndex(state, STATE_INDEX_BY_ID, 4);
+const getModeIndex = (mode) => normalizeRuntimeIndex(mode, MODE_INDEX_BY_ID, 0);
 const SKINS = [["desk","Desk"],["ledger","Ledger"],["phosphor","Phosphor"],["night-study","Night Study"],["fireplace","Fireplace"],["drafting-table","Drafting Table"],["cartographer","Cartographer"],["letterpress","Letterpress"],["tron","Tron"],["jarvis","Jarvis"]];
 const TIME_FORMATTER = new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 const nowIso = () => new Date().toISOString();
@@ -80,7 +143,7 @@ function Chat() {
         const d = r.data;
         setMessages((d.rk_history || []).flatMap((t, index) => [
           { id: `hydrated-user-${index}`, role: "user", content: t.user, ts: t.ts || null, attachment: t.attachment || null },
-          { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null, state: t.current_state_id || "St0", mode: t.current_mode_id || "011", modelLabel: t.model_label || null, latencyMs: t.response_ms || t.latency_ms || null },
+          { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null, state: t.current_state_id || t.state || "Steady", mode: t.current_mode_id || t.mode || "NORMAL", modelLabel: t.model_label || null, latencyMs: t.response_ms || t.latency_ms || null },
         ]));
       } catch (e) { console.warn("session hydrate failed", e); }
     })();
@@ -143,24 +206,48 @@ function Chat() {
       const r = await axios.post(`${API}/chat`, { message: outbound, target: requestDouble ? "both" : "rk_only", model: selectedModelKey, client_ts: userTs, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null, cybrary_item_ids: attachment ? [attachment.id] : [] }, { headers: authHeader, timeout: 45000 });
       const elapsedMs = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - startedAt);
       const d = r.data; const content = d.rk_response || d.plain_response || ""; const assistantTs = d.ts || d.created_at || nowIso(); const responseMs = Number(d.response_ms ?? d.latency_ms ?? elapsedMs);
-      setMessages((m) => [...m, { id: assistantId, role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: assistantTs, state: d.current_state_id || "St0", mode: d.current_mode_id || "011", modelLabel: selectedModelLabel, latencyMs: responseMs }]);
+      setMessages((m) => [...m, { id: assistantId, role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: assistantTs, state: d.current_state_id || "Steady", mode: d.current_mode_id || "NORMAL", modelLabel: selectedModelLabel, latencyMs: responseMs }]);
     } catch (e) {
       const elapsedMs = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - startedAt);
       const detail = stringifyEngineError(e?.response?.data?.detail || e?.response?.data || e?.message);
       const errMsg = `[ link to engine failed — ${detail} ]`;
-      setMessages((m) => [...m, { id: assistantId, role: "assistant", content: errMsg, plain: requestDouble ? errMsg : null, ts: nowIso(), state: "St0", mode: "011", modelLabel: selectedModelLabel, latencyMs: elapsedMs }]);
+      setMessages((m) => [...m, { id: assistantId, role: "assistant", content: errMsg, plain: requestDouble ? errMsg : null, ts: nowIso(), state: "Steady", mode: "NORMAL", modelLabel: selectedModelLabel, latencyMs: elapsedMs }]);
     } finally { setSending(false); }
   };
   const onKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } };
   const pairs = useMemo(() => {
     const out = []; let pending = null;
     for (const m of messages) {
-      if (m.role === "user") { if (pending) out.push(pending); pending = { user: m.content, userTs: m.ts, userAttachment: m.attachment || null, assistant: null, plain: null, assistantTs: null, assistantState: "St0", assistantMode: "011", assistantModel: null, assistantLatencyMs: null }; }
-      else if (pending) { pending.assistant = m.content; pending.plain = m.plain || null; pending.assistantTs = m.ts; pending.assistantState = m.state || "St0"; pending.assistantMode = m.mode || "011"; pending.assistantModel = m.modelLabel || null; pending.assistantLatencyMs = m.latencyMs ?? null; out.push(pending); pending = null; }
-      else out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: "St0", assistantMode: "011", assistantModel: m.modelLabel || null, assistantLatencyMs: m.latencyMs ?? null });
+      if (m.role === "user") { if (pending) out.push(pending); pending = { user: m.content, userTs: m.ts, userAttachment: m.attachment || null, assistant: null, plain: null, assistantTs: null, assistantState: "Steady", assistantMode: "NORMAL", assistantModel: null, assistantLatencyMs: null }; }
+      else if (pending) { pending.assistant = m.content; pending.plain = m.plain || null; pending.assistantTs = m.ts; pending.assistantState = m.state || "Steady"; pending.assistantMode = m.mode || "NORMAL"; pending.assistantModel = m.modelLabel || null; pending.assistantLatencyMs = m.latencyMs ?? null; out.push(pending); pending = null; }
+      else out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: m.state || "Steady", assistantMode: m.mode || "NORMAL", assistantModel: m.modelLabel || null, assistantLatencyMs: m.latencyMs ?? null });
     }
     if (pending) out.push(pending); return out;
   }, [messages]);
+  const latestRuntime = useMemo(() => {
+    for (let i = pairs.length - 1; i >= 0; i -= 1) {
+      if (pairs[i]?.assistant !== null) return { state: pairs[i].assistantState, mode: pairs[i].assistantMode };
+    }
+    return { state: "Steady", mode: "NORMAL" };
+  }, [pairs]);
+  const activeStateIndex = getStateIndex(latestRuntime.state);
+  const activeModeIndex = getModeIndex(latestRuntime.mode);
+  const renderEngineColumn = (label, activeIndex, maxLiveIndex = 9) => (
+    <div className={`engine-column engine-column-${label.toLowerCase()}`} aria-label={`${label}${activeIndex}`} title={`${label}${activeIndex}`}>
+      <div className="engine-column-label">{label}</div>
+      <div className="engine-stack">
+        {ENGINE_BANDS.map((band) => (
+          <div
+            key={`${label}-${band}`}
+            className={`engine-band ${band === activeIndex ? "active" : ""} ${band > maxLiveIndex ? "reserved" : ""}`}
+            style={{ "--band-color": ENGINE_BAND_COLORS[band] }}
+          >
+            {band}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
   const fmtTs = (iso) => formatTimeLabel(iso);
   const modelStamp = (p) => p.assistantModel || null;
   const replyStamp = (p) => p.assistantLatencyMs != null ? `R ${formatLatency(p.assistantLatencyMs)}` : null;
@@ -193,6 +280,13 @@ function Chat() {
       {sending && <div className="thinking">considering</div>}
     </div>
   );
+  const renderBrunelInstrument = () => (
+    <div className={doubleMode ? "rk-instrument-shell" : "rk-instrument-shell solo"}>
+      {renderEngineColumn("M", activeModeIndex, 4)}
+      <div className={doubleMode ? "panel panel-rk" : "panel panel-rk solo"}>{doubleMode && <div className="panel-title panel-title-rk"><div className="main-title"><span>BRUNEL</span><span className="powered">Powered by ARCHE</span></div><div className="sub-title">Artificial Behavioral Intelligence</div></div>}{doubleMode ? renderPanelPairs("rk") : renderSinglePairs()}</div>
+      {renderEngineColumn("S", activeStateIndex, 9)}
+    </div>
+  );
 
   return (
     <div className="app" data-skin={skin}>
@@ -204,7 +298,7 @@ function Chat() {
 
       <div className={doubleMode ? "chat-grid double" : "chat-grid single"}>
         {doubleMode && <div className="panel panel-plain"><div className="panel-title panel-title-plain"><div className="main-title">Standard AI</div><div className="sub-title">Baseline comparison</div></div>{renderPanelPairs("plain")}</div>}
-        <div className={doubleMode ? "panel panel-rk" : "panel panel-rk solo"}>{doubleMode && <div className="panel-title panel-title-rk"><div className="main-title"><span>BRUNEL</span><span className="powered">Powered by ARCHE</span></div><div className="sub-title">Artificial Behavioral Intelligence</div></div>}{doubleMode ? renderPanelPairs("rk") : renderSinglePairs()}</div>
+        {renderBrunelInstrument()}
       </div>
 
       <div className="panel-input shared-seed-box">
