@@ -215,6 +215,11 @@
   box-shadow: 0 0 14px var(--bronze-glow);
 }
 
+.engine-column {
+  flex-direction: column-reverse !important;
+  gap: 6px !important;
+}
+
 .engine-column-label {
   font-size: 0 !important;
 }
@@ -222,9 +227,10 @@
 .engine-column-label::after {
   color: var(--bronze);
   font-family: var(--title-font);
-  font-size: 9px;
+  font-size: 8px;
   line-height: 1;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
+  opacity: 0.82;
 }
 
 .engine-column-m .engine-column-label::after {
