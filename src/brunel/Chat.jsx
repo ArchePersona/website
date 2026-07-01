@@ -13,6 +13,7 @@ const API = `${BACKEND_URL}/api`;
 const DRAWER_ANIMATION_MS = 240;
 
 const STATE_VISUALS = {
+  "ST-0": { label: "Baseline", className: "state-baseline" }, "ST-1": { label: "Tender", className: "state-tender" }, "ST-2": { label: "Eager", className: "state-eager" }, "ST-3": { label: "Steady", className: "state-steady" }, "ST-4": { label: "Reflective", className: "state-reflective" }, "ST-5": { label: "Focused", className: "state-focused" }, "ST-6": { label: "Guarded", className: "state-guarded" }, "ST-7": { label: "Concerned", className: "state-concerned" }, "ST-8": { label: "Restless", className: "state-restless" }, "ST-9": { label: "Sharp", className: "state-sharp" },
   St0: { label: "Baseline", className: "state-baseline" }, St1: { label: "Tender", className: "state-tender" }, St2: { label: "Eager", className: "state-eager" }, St3: { label: "Steady", className: "state-steady" }, St4: { label: "Reflective", className: "state-reflective" }, St5: { label: "Focused", className: "state-focused" }, St6: { label: "Guarded", className: "state-guarded" }, St7: { label: "Concerned", className: "state-concerned" }, St8: { label: "Restless", className: "state-restless" }, St9: { label: "Sharp", className: "state-sharp" },
 };
 const MODE_VISUALS = {
@@ -46,6 +47,16 @@ const STATE_INDEX_BY_ID = {
   Retreating: 3,
   Stuck: 6,
   Avoidant: 7,
+  "ST-0": 0,
+  "ST-1": 1,
+  "ST-2": 2,
+  "ST-3": 3,
+  "ST-4": 4,
+  "ST-5": 5,
+  "ST-6": 6,
+  "ST-7": 7,
+  "ST-8": 8,
+  "ST-9": 9,
   St0: 0,
   St1: 1,
   St2: 2,
@@ -61,13 +72,18 @@ const MODE_INDEX_BY_ID = {
   NORMAL: 0,
   RELATIONAL: 1,
   EXPLORATORY: 2,
-  CLINICAL: 3,
+  CLINICAL: 4,
   PROTECTIVE: 4,
   "011": 0,
   "111": 1,
   "211": 2,
   "311": 3,
   "411": 4,
+  "511": 5,
+  "611": 6,
+  "711": 7,
+  "811": 8,
+  "911": 9,
 };
 const normalizeRuntimeIndex = (value, lookup, fallback = 0) => {
   if (value == null) return fallback;
@@ -81,6 +97,8 @@ const normalizeRuntimeIndex = (value, lookup, fallback = 0) => {
 };
 const getStateIndex = (state) => normalizeRuntimeIndex(state, STATE_INDEX_BY_ID, 4);
 const getModeIndex = (mode) => normalizeRuntimeIndex(mode, MODE_INDEX_BY_ID, 0);
+const getStateVisual = (state) => STATE_VISUALS[state] || STATE_VISUALS[`ST-${getStateIndex(state)}`] || STATE_VISUALS["ST-0"];
+const getModeVisual = (mode) => MODE_VISUALS[mode] || MODE_VISUALS[`${getModeIndex(mode)}11`] || MODE_VISUALS["011"];
 const SKINS = [["desk","Desk"],["ledger","Ledger"],["phosphor","Phosphor"],["night-study","Night Study"],["fireplace","Fireplace"],["drafting-table","Drafting Table"],["cartographer","Cartographer"],["letterpress","Letterpress"],["tron","Tron"],["jarvis","Jarvis"]];
 const TIME_FORMATTER = new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 const nowIso = () => new Date().toISOString();
@@ -108,6 +126,7 @@ function Chat() {
   const sessionId = user?.id || "";
   const isAdmin = (user?.email || "").toLowerCase() === "archepersona@gmail.com";
   const [messages, setMessages] = useState([]);
+  const [activeThreadId, setActiveThreadId] = useState(null);
   const [sending, setSending] = useState(false);
   const [text, setText] = useState("");
   const [copiedKey, setCopiedKey] = useState(null);
@@ -141,9 +160,10 @@ function Chat() {
         const r = await axios.get(`${API}/session/${sessionId}`, { headers: authHeader });
         if (cancelled) return;
         const d = r.data;
+        setActiveThreadId(d.thread_id || null);
         setMessages((d.rk_history || []).flatMap((t, index) => [
           { id: `hydrated-user-${index}`, role: "user", content: t.user, ts: t.ts || null, attachment: t.attachment || null },
-          { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null, state: t.current_state_id || t.state || "Steady", mode: t.current_mode_id || t.mode || "NORMAL", modelLabel: t.model_label || null, latencyMs: t.response_ms || t.latency_ms || null },
+          { id: `hydrated-assistant-${index}`, role: "assistant", content: t.assistant, plain: null, ts: t.ts || null, state: t.current_state_id || t.state || "Steady", mode: t.current_mode_id || t.mode || "011", modelLabel: t.model_label || null, latencyMs: t.response_ms || t.latency_ms || null },
         ]));
       } catch (e) { console.warn("session hydrate failed", e); }
     })();
@@ -174,7 +194,18 @@ function Chat() {
 
   const openDrawer = (kind) => { if (drawerTimerRef.current) window.clearTimeout(drawerTimerRef.current); setDrawerClosing(false); setDrawerKind(kind); };
   const closeDrawer = () => { if (!drawerKind || drawerClosing) return; setDrawerClosing(true); if (drawerTimerRef.current) window.clearTimeout(drawerTimerRef.current); drawerTimerRef.current = window.setTimeout(() => { setDrawerKind(null); setDrawerClosing(false); drawerTimerRef.current = null; }, DRAWER_ANIMATION_MS); };
-  const getAssistantVisualClass = (message) => [STATE_VISUALS[message?.state || "St0"]?.className || STATE_VISUALS.St0.className, MODE_VISUALS[message?.mode || "011"]?.className || MODE_VISUALS["011"].className].join(" ");
+  const getAssistantVisualClass = (message) => [getStateVisual(message?.state).className, getModeVisual(message?.mode).className].join(" ");
+  const startNewThread = async () => {
+    if (!session?.access_token || sending) return;
+    try {
+      const r = await axios.post(`${API}/threads`, {}, { headers: authHeader, timeout: 15000 });
+      setActiveThreadId(r.data.thread_id || null);
+      setMessages([]);
+      setText("");
+      setAttachedItem(null);
+      closeDrawer();
+    } catch (e) { console.warn("new thread failed", e); }
+  };
   const clearLocalChat = () => setMessages([]);
   const toggleSpeech = () => { if (!speechSupported || !recognitionRef.current) return; try { if (listening) recognitionRef.current.stop(); else { speechBaseRef.current = text; recognitionRef.current.start(); } } catch (_) {} };
   const openFilePicker = () => fileInputRef.current?.click();
@@ -203,24 +234,24 @@ function Chat() {
     const outbound = attachment ? `${msg || "Please review the Cybrary item."}\n\n[Cybrary item attached: ${attachment.name} · ${formatFileSize(attachment.size)} · ${attachment.type} · ${attachment.id}]` : msg;
     setSending(true); setText(""); setAttachedItem(null); setMessages((m) => [...m, { id: userId, role: "user", content: msg || "Cybrary item attached", ts: userTs, attachment }]);
     try {
-      const r = await axios.post(`${API}/chat`, { message: outbound, target: requestDouble ? "both" : "rk_only", model: selectedModelKey, client_ts: userTs, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null, cybrary_item_ids: attachment ? [attachment.id] : [] }, { headers: authHeader, timeout: 45000 });
+      const r = await axios.post(`${API}/chat`, { message: outbound, thread_id: activeThreadId, target: requestDouble ? "both" : "rk_only", model: selectedModelKey, client_ts: userTs, client_timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null, cybrary_item_ids: attachment ? [attachment.id] : [] }, { headers: authHeader, timeout: 45000 });
       const elapsedMs = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - startedAt);
-      const d = r.data; const content = d.rk_response || d.plain_response || ""; const assistantTs = d.ts || d.created_at || nowIso(); const responseMs = Number(d.response_ms ?? d.latency_ms ?? elapsedMs);
-      setMessages((m) => [...m, { id: assistantId, role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: assistantTs, state: d.current_state_id || "Steady", mode: d.current_mode_id || "NORMAL", modelLabel: selectedModelLabel, latencyMs: responseMs }]);
+      const d = r.data; if (d.thread_id) setActiveThreadId(d.thread_id); const content = d.rk_response || d.plain_response || ""; const assistantTs = d.ts || d.created_at || nowIso(); const responseMs = Number(d.response_ms ?? d.latency_ms ?? elapsedMs);
+      setMessages((m) => [...m, { id: assistantId, role: "assistant", content, plain: requestDouble ? d.plain_response || "" : null, ts: assistantTs, state: d.current_state_id || "Steady", mode: d.current_mode_id || "011", modelLabel: selectedModelLabel, latencyMs: responseMs }]);
     } catch (e) {
       const elapsedMs = Math.round((typeof performance !== "undefined" ? performance.now() : Date.now()) - startedAt);
       const detail = stringifyEngineError(e?.response?.data?.detail || e?.response?.data || e?.message);
       const errMsg = `[ link to engine failed — ${detail} ]`;
-      setMessages((m) => [...m, { id: assistantId, role: "assistant", content: errMsg, plain: requestDouble ? errMsg : null, ts: nowIso(), state: "Steady", mode: "NORMAL", modelLabel: selectedModelLabel, latencyMs: elapsedMs }]);
+      setMessages((m) => [...m, { id: assistantId, role: "assistant", content: errMsg, plain: requestDouble ? errMsg : null, ts: nowIso(), state: "Steady", mode: "011", modelLabel: selectedModelLabel, latencyMs: elapsedMs }]);
     } finally { setSending(false); }
   };
   const onKey = (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } };
   const pairs = useMemo(() => {
     const out = []; let pending = null;
     for (const m of messages) {
-      if (m.role === "user") { if (pending) out.push(pending); pending = { user: m.content, userTs: m.ts, userAttachment: m.attachment || null, assistant: null, plain: null, assistantTs: null, assistantState: "Steady", assistantMode: "NORMAL", assistantModel: null, assistantLatencyMs: null }; }
-      else if (pending) { pending.assistant = m.content; pending.plain = m.plain || null; pending.assistantTs = m.ts; pending.assistantState = m.state || "Steady"; pending.assistantMode = m.mode || "NORMAL"; pending.assistantModel = m.modelLabel || null; pending.assistantLatencyMs = m.latencyMs ?? null; out.push(pending); pending = null; }
-      else out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: m.state || "Steady", assistantMode: m.mode || "NORMAL", assistantModel: m.modelLabel || null, assistantLatencyMs: m.latencyMs ?? null });
+      if (m.role === "user") { if (pending) out.push(pending); pending = { user: m.content, userTs: m.ts, userAttachment: m.attachment || null, assistant: null, plain: null, assistantTs: null, assistantState: "Steady", assistantMode: "011", assistantModel: null, assistantLatencyMs: null }; }
+      else if (pending) { pending.assistant = m.content; pending.plain = m.plain || null; pending.assistantTs = m.ts; pending.assistantState = m.state || "Steady"; pending.assistantMode = m.mode || "011"; pending.assistantModel = m.modelLabel || null; pending.assistantLatencyMs = m.latencyMs ?? null; out.push(pending); pending = null; }
+      else out.push({ user: null, userTs: null, userAttachment: null, assistant: m.content, plain: m.plain || null, assistantTs: m.ts, assistantState: m.state || "Steady", assistantMode: m.mode || "011", assistantModel: m.modelLabel || null, assistantLatencyMs: m.latencyMs ?? null });
     }
     if (pending) out.push(pending); return out;
   }, [messages]);
@@ -228,7 +259,7 @@ function Chat() {
     for (let i = pairs.length - 1; i >= 0; i -= 1) {
       if (pairs[i]?.assistant !== null) return { state: pairs[i].assistantState, mode: pairs[i].assistantMode };
     }
-    return { state: "Steady", mode: "NORMAL" };
+    return { state: "Steady", mode: "011" };
   }, [pairs]);
   const activeStateIndex = getStateIndex(latestRuntime.state);
   const activeModeIndex = getModeIndex(latestRuntime.mode);
@@ -310,7 +341,7 @@ function Chat() {
 
       <div className="footnote"><span>BRUNEL · An ArchePersona product</span><span className="footnote-tag">Powered by ARCHE</span></div>
 
-      {drawerKind && <><div className={`drawer-backdrop ${drawerClosing ? "closing" : "open"}`} onClick={closeDrawer} /><aside className={`drawer ${drawerKind === "library" ? "cybrary-drawer" : "works-drawer"} ${drawerClosing ? "closing" : "open"}`}><div className="drawer-title"><span>{drawerKind === "settings" ? "Brunel Controls" : "Cybrary"}</span><button className="drawer-close" onClick={closeDrawer}><X size={18} /></button></div>{drawerKind === "settings" ? <div className="drawer-row"><div className="drawer-section"><span className="drawer-label">Skin</span><select className="model-select" value={skin} onChange={(e) => setSkin(e.target.value)}>{SKINS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div>{isAdmin && <div className="drawer-section"><span className="drawer-label">Model</span><select className="model-select" value={selectedModel} onChange={(e) => setSelectedModel(normalizeModelChoice(e.target.value))}>{ADMIN_MODEL_CHOICES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div>}<div className="drawer-section"><span className="drawer-label">View</span><div className="view-toggle"><button className={viewMode === "single" ? "active" : ""} onClick={() => setViewMode("single")}>Single</button><button className={viewMode === "double" ? "active" : ""} onClick={() => setViewMode("double")}>Dual</button></div></div><button className="reset-btn" onClick={copyThread} disabled={pairs.length === 0}><ClipboardCopy size={13} />{copiedKey === "thread" ? "Copied" : "Copy"}</button><button className="reset-btn" onClick={clearLocalChat}><Trash2 size={13} />Clear</button>{isAdmin && <button className="reset-btn" onClick={() => navigate("/brunel/admin")}><Shield size={13} />Admin</button>}<button className="reset-btn" onClick={signOut}><LogOut size={13} />Exit</button></div> : <div className="drawer-row cybrary-list">{cybraryItems.length === 0 ? <p className="drawer-note">No Cybrary items yet.</p> : cybraryItems.map((item) => <button key={item.id} className="cybrary-item" onClick={() => { setAttachedItem(item); closeDrawer(); }}><span>{item.name}</span><small>{item.kind || item.type} · {formatFileSize(item.size)} · {item.status || "stored"}</small></button>)}</div>}</aside></>}
+      {drawerKind && <><div className={`drawer-backdrop ${drawerClosing ? "closing" : "open"}`} onClick={closeDrawer} /><aside className={`drawer ${drawerKind === "library" ? "cybrary-drawer" : "works-drawer"} ${drawerClosing ? "closing" : "open"}`}><div className="drawer-title"><span>{drawerKind === "settings" ? "Brunel Controls" : "Cybrary"}</span><button className="drawer-close" onClick={closeDrawer}><X size={18} /></button></div>{drawerKind === "settings" ? <div className="drawer-row"><div className="drawer-section"><span className="drawer-label">Skin</span><select className="model-select" value={skin} onChange={(e) => setSkin(e.target.value)}>{SKINS.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div>{isAdmin && <div className="drawer-section"><span className="drawer-label">Model</span><select className="model-select" value={selectedModel} onChange={(e) => setSelectedModel(normalizeModelChoice(e.target.value))}>{ADMIN_MODEL_CHOICES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}</select></div>}<div className="drawer-section"><span className="drawer-label">View</span><div className="view-toggle"><button className={viewMode === "single" ? "active" : ""} onClick={() => setViewMode("single")}>Single</button><button className={viewMode === "double" ? "active" : ""} onClick={() => setViewMode("double")}>Dual</button></div></div><button className="reset-btn" onClick={startNewThread} disabled={sending}><Trash2 size={13} />New Chat</button><button className="reset-btn" onClick={copyThread} disabled={pairs.length === 0}><ClipboardCopy size={13} />{copiedKey === "thread" ? "Copied" : "Copy"}</button>{isAdmin && <button className="reset-btn" onClick={() => navigate("/brunel/admin")}><Shield size={13} />Admin</button>}<button className="reset-btn" onClick={signOut}><LogOut size={13} />Exit</button></div> : <div className="drawer-row cybrary-list">{cybraryItems.length === 0 ? <p className="drawer-note">No Cybrary items yet.</p> : cybraryItems.map((item) => <button key={item.id} className="cybrary-item" onClick={() => { setAttachedItem(item); closeDrawer(); }}><span>{item.name}</span><small>{item.kind || item.type} · {formatFileSize(item.size)} · {item.status || "stored"}</small></button>)}</div>}</aside></>}
     </div>
   );
 }
