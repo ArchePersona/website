@@ -2,7 +2,7 @@ import './arche-home.css';
 import heroImage from './images/file_000000004274720c9ccd5c5a01ca599a.png';
 import logoImage from './images/ArchePersonaLogo1.png';
 
-const BRUNEL_DISCLAIMER_URL = 'https://www.archepersona.online/brunel/disclaimer';
+const CHARACTER_URL = '/about';
 const CONTROL_TOWER_URL = 'https://control-tower-mobile.vercel.app/';
 
 export default function ArcheHomepage() {
@@ -11,7 +11,7 @@ export default function ArcheHomepage() {
       <section className="ap-hero" aria-label="ArchePersona hero">
         <img className="ap-hero-image" src={heroImage} alt="Chimera and tower at sunset" />
         <img className="ap-hero-logo" src={logoImage} alt="ArchePersona" />
-        <a className="ap-zone ap-zone-left" href={BRUNEL_DISCLAIMER_URL} aria-label="Character" />
+        <a className="ap-zone ap-zone-left" href={CHARACTER_URL} aria-label="Character" />
         <a className="ap-zone ap-zone-right" href={CONTROL_TOWER_URL} aria-label="Consequence" />
       </section>
 
@@ -19,7 +19,7 @@ export default function ArcheHomepage() {
         <div className="ap-statement-line">Behavioral infrastructure</div>
         <div className="ap-statement-for">for</div>
         <div className="ap-duality">
-          <a href={BRUNEL_DISCLAIMER_URL}>CHARACTER</a>
+          <a href={CHARACTER_URL}>CHARACTER</a>
           <span>&amp;</span>
           <a href={CONTROL_TOWER_URL}>CONSEQUENCE</a>
         </div>
