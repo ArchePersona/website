@@ -8,6 +8,7 @@ import InfoPage from './InfoPage.jsx';
 import VHoldPage from './VHoldPage.jsx';
 
 const INVESTOR_DECK_URL = 'https://control-tower-lru30ht.gamma.site/';
+const BRUNEL_DISCLAIMER_URL = 'https://brunel-gold.vercel.app/disclaimer';
 
 function ExternalRedirect({ to }) {
   useEffect(() => {
@@ -23,7 +24,7 @@ function App() {
       <Routes>
         <Route path="/" element={<ArcheHomepage />} />
         <Route path="/deck" element={<ExternalRedirect to={INVESTOR_DECK_URL} />} />
-        <Route path="/creations" element={<Navigate to="/about" replace />} />
+        <Route path="/creations" element={<ExternalRedirect to={BRUNEL_DISCLAIMER_URL} />} />
         <Route path="/consequence" element={<ExternalRedirect to="https://control-tower-mobile.vercel.app/" />} />
         <Route path="/oversight" element={<Navigate to="/consequence" replace />} />
         <Route path="/archengine" element={<InfoPage page="archengine" />} />
@@ -36,3 +37,4 @@ function App() {
 }
 
 createRoot(document.getElementById('root')).render(<App />);
+
