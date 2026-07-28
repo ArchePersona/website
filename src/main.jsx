@@ -6,6 +6,7 @@ import './styles.css';
 import ArcheHomepage from './ArcheHomepage.jsx';
 import InfoPage from './InfoPage.jsx';
 import VHoldPage from './VHoldPage.jsx';
+import PreAlphaPage from './PreAlphaPage.jsx';
 
 const INVESTOR_DECK_URL = 'https://control-tower-lru30ht.gamma.site/';
 
@@ -23,7 +24,7 @@ function App() {
       <Routes>
         <Route path="/" element={<ArcheHomepage />} />
         <Route path="/deck" element={<ExternalRedirect to={INVESTOR_DECK_URL} />} />
-        <Route path="/creations" element={<Navigate to="/archengine" replace />} />
+        <Route path="/creations" element={<PreAlphaPage />} />
         <Route path="/consequence" element={<ExternalRedirect to="https://control-tower-mobile.vercel.app/" />} />
         <Route path="/oversight" element={<Navigate to="/consequence" replace />} />
         <Route path="/archengine" element={<InfoPage page="archengine" />} />
