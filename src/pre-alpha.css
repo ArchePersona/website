@@ -1,0 +1,102 @@
+.prealpha-page {
+  padding-top: clamp(4rem, 8vw, 6rem);
+  padding-bottom: clamp(2rem, 6vw, 4rem);
+}
+
+.prealpha-panel {
+  width: min(860px, 92vw);
+}
+
+.prealpha-badge {
+  display: inline-block;
+  margin: 0 0 1.25rem;
+  padding: 0.45rem 0.8rem;
+  font-family: Audiowide, Inter, sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  color: #ffe5b2;
+  border: 1px solid rgba(255, 198, 94, 0.7);
+  border-radius: 999px;
+  background: rgba(48, 31, 10, 0.45);
+}
+
+.prealpha-copy {
+  width: min(680px, 100%);
+  margin: 0 auto;
+}
+
+.prealpha-copy p {
+  margin-top: 0.7rem;
+  font-size: clamp(1.05rem, 2vw, 1.35rem);
+}
+
+.prealpha-status {
+  width: min(620px, 100%);
+  margin: clamp(1.8rem, 4vw, 2.8rem) auto 0;
+  border-top: 1px solid rgba(215, 153, 55, 0.28);
+  border-bottom: 1px solid rgba(215, 153, 55, 0.28);
+}
+
+.prealpha-status div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0;
+  border-bottom: 1px solid rgba(215, 153, 55, 0.12);
+  font-family: Inter, sans-serif;
+  text-align: left;
+}
+
+.prealpha-status div:last-child {
+  border-bottom: 0;
+}
+
+.prealpha-status span {
+  color: rgba(245, 220, 178, 0.72);
+}
+
+.prealpha-status strong {
+  color: #ffe5b2;
+  font-weight: 600;
+  text-align: right;
+}
+
+.prealpha-warning {
+  max-width: 650px;
+  font-size: clamp(0.95rem, 1.7vw, 1.15rem) !important;
+  color: rgba(245, 220, 178, 0.65) !important;
+}
+
+.prealpha-enter {
+  display: inline-block;
+  margin-top: 2rem;
+  padding: 0.9rem 1.25rem;
+  font-family: Audiowide, Inter, sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.16em;
+  color: #120d06;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid #e5a944;
+  border-radius: 999px;
+  background: #e5a944;
+  box-shadow: 0 0 24px rgba(229, 169, 68, 0.2);
+}
+
+.prealpha-enter:hover,
+.prealpha-enter:focus-visible {
+  background: #f3c46c;
+  border-color: #f3c46c;
+  outline: none;
+}
+
+@media (max-width: 560px) {
+  .prealpha-status div {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .prealpha-status strong {
+    text-align: left;
+  }
+}
