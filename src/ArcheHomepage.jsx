@@ -2,7 +2,7 @@ import './arche-home.css';
 import heroImage from './images/file_000000004274720c9ccd5c5a01ca599a.png';
 import logoImage from './images/ArchePersonaLogo1.png';
 
-const CHARACTER_URL = 'https://brunel-gold.vercel.app/disclaimer';
+const CHARACTER_URL = '/creations';
 const CONTROL_TOWER_URL = 'https://control-tower-mobile.vercel.app/';
 
 export default function ArcheHomepage() {
